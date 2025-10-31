@@ -2,14 +2,20 @@ const express = require("express");
 const router = express.Router();
 const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
+const mongoose = require("mongoose");
 
 // Get personal attendance for an employee by month/year
 router.get("/employee/:empId/:month/:year", async (req, res) => {
   const { empId, month, year } = req.params;
 
   try {
+    // Convert string employeeId to ObjectId if it's a valid ObjectId format
+    const employeeId = mongoose.Types.ObjectId.isValid(empId) 
+      ? new mongoose.Types.ObjectId(empId) 
+      : empId;
+
     const records = await Attendance.find({
-      employeeId: empId,
+      employeeId: employeeId,
       date: {
         $gte: new Date(year, month - 1, 1),
         $lte: new Date(year, month, 0),
@@ -27,13 +33,18 @@ router.post("/checkin", async (req, res) => {
   try {
     const { employeeId, location } = req.body;
     
+    // Convert string employeeId to ObjectId if it's a valid ObjectId format
+    const empId = mongoose.Types.ObjectId.isValid(employeeId) 
+      ? new mongoose.Types.ObjectId(employeeId) 
+      : employeeId;
+    
     // Get today's date
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     // Check if employee already has a check-in for today
     let attendanceRecord = await Attendance.findOne({
-      employeeId: employeeId,
+      employeeId: empId,
       date: today
     });
     
@@ -47,7 +58,7 @@ router.post("/checkin", async (req, res) => {
     
     // Create new attendance record
     attendanceRecord = new Attendance({
-      employeeId: employeeId,
+      employeeId: empId,
       date: today,
       inTime: new Date(),
       status: "Present"
@@ -62,7 +73,7 @@ router.post("/checkin", async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.emit('employeeCheckIn', {
-        employeeId: employeeId,
+        employeeId: employeeId, // Keep original string ID for client-side
         employeeName: attendanceRecord.employeeId.name,
         department: attendanceRecord.employeeId.department,
         checkInTime: attendanceRecord.inTime,
@@ -84,13 +95,18 @@ router.post("/checkout", async (req, res) => {
   try {
     const { employeeId } = req.body;
     
+    // Convert string employeeId to ObjectId if it's a valid ObjectId format
+    const empId = mongoose.Types.ObjectId.isValid(employeeId) 
+      ? new mongoose.Types.ObjectId(employeeId) 
+      : employeeId;
+    
     // Get today's date
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     // Find today's attendance record
     let attendanceRecord = await Attendance.findOne({
-      employeeId: employeeId,
+      employeeId: empId,
       date: today
     });
     
@@ -126,7 +142,7 @@ router.post("/checkout", async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.emit('employeeCheckOut', {
-        employeeId: employeeId,
+        employeeId: employeeId, // Keep original string ID for client-side
         employeeName: attendanceRecord.employeeId.name,
         department: attendanceRecord.employeeId.department,
         checkOutTime: attendanceRecord.outTime,
@@ -149,13 +165,18 @@ router.get("/today/:employeeId", async (req, res) => {
   try {
     const { employeeId } = req.params;
     
+    // Convert string employeeId to ObjectId if it's a valid ObjectId format
+    const empId = mongoose.Types.ObjectId.isValid(employeeId) 
+      ? new mongoose.Types.ObjectId(employeeId) 
+      : employeeId;
+    
     // Get today's date
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     // Find today's attendance record
     const attendanceRecord = await Attendance.findOne({
-      employeeId: employeeId,
+      employeeId: empId,
       date: today
     }).populate('employeeId', 'name department');
     
