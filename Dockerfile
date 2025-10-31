@@ -56,9 +56,13 @@ WORKDIR /app
 COPY --from=backend-build /app/server ./server
 COPY --from=frontend-build /app/client/dist ./client/dist
 
-# Copy root package.json and .env files for production scripts
+# Copy root package.json for production scripts
 COPY package*.json ./
-COPY .env ./
+
+# Create a minimal .env file for default values
+RUN echo "NODE_ENV=production" > .env && \
+    echo "PORT=5000" >> .env && \
+    echo "HOST=0.0.0.0" >> .env
 
 # Set environment variables
 ENV NODE_ENV=production \
