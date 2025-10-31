@@ -68,6 +68,11 @@ router.get('/', authenticateToken, async (req, res) => {
 // @access  Private
 router.get('/:id', authenticateToken, requireAdminOrSelf, async (req, res) => {
   try {
+    // Validate that the ID is a valid ObjectId before using it
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid employee ID format' });
+    }
+    
     const employee = await Employee.findById(req.params.id);
     
     if (!employee) {
@@ -133,11 +138,20 @@ router.put('/:id', authenticateToken, requireAdminOrSelf, async (req, res) => {
     
     // Check if another employee with the same email exists
     if (email) {
-      const existingEmployee = await Employee.findOne({ 
-        email, 
-        _id: { $ne: req.params.id },
+      // Process the employee ID to ensure it's a valid ObjectId
+      let processedEmpId = req.params.id;
+      
+      // Only add _id condition if it's a valid ObjectId string
+      const queryConditions = {
+        email,
         isActive: true
-      });
+      };
+      
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        queryConditions._id = { $ne: req.params.id };
+      }
+      
+      const existingEmployee = await Employee.findOne(queryConditions);
       if (existingEmployee) {
         return res.status(400).json({ message: 'Another employee with this email already exists' });
       }
@@ -156,6 +170,11 @@ router.put('/:id', authenticateToken, requireAdminOrSelf, async (req, res) => {
     // Only admin can change roles
     if (role && req.user.role === 'admin') {
       updateData.role = role;
+    }
+    
+    // Validate that the ID is a valid ObjectId before using it
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid employee ID format' });
     }
     
     const employee = await Employee.findByIdAndUpdate(
@@ -187,6 +206,11 @@ router.put('/:id', authenticateToken, requireAdminOrSelf, async (req, res) => {
 // @access  Private (Admin)
 router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    // Validate that the ID is a valid ObjectId before using it
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid employee ID format' });
+    }
+    
     const employee = await Employee.findByIdAndUpdate(
       req.params.id,
       { isActive: false },
