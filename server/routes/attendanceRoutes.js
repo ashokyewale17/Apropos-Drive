@@ -71,8 +71,11 @@ router.get("/employee/:empId/:month/:year", async (req, res) => {
         queryConditions.push({ _id: processedEmpId });
       }
       
-      // Always add email condition for non-ObjectId values
+      // Add conditions for non-ObjectId values
       queryConditions.push({ email: processedEmpId });
+      
+      // Also check for string representation of _id
+      queryConditions.push({ _id: processedEmpId });
       
       const employee = await Employee.findOne({
         $or: queryConditions
@@ -128,8 +131,11 @@ router.post("/checkin", async (req, res) => {
         queryConditions.push({ _id: processedEmpId });
       }
       
-      // Always add email condition for non-ObjectId values
+      // Add conditions for non-ObjectId values
       queryConditions.push({ email: processedEmpId });
+      
+      // Also check for string representation of _id
+      queryConditions.push({ _id: processedEmpId });
       
       const employee = await Employee.findOne({
         $or: queryConditions
@@ -227,8 +233,11 @@ router.post("/checkout", async (req, res) => {
         queryConditions.push({ _id: processedEmpId });
       }
       
-      // Always add email condition for non-ObjectId values
+      // Add conditions for non-ObjectId values
       queryConditions.push({ email: processedEmpId });
+      
+      // Also check for string representation of _id
+      queryConditions.push({ _id: processedEmpId });
       
       const employee = await Employee.findOne({
         $or: queryConditions
@@ -334,8 +343,11 @@ router.get("/today/:employeeId", async (req, res) => {
         queryConditions.push({ _id: processedEmpId });
       }
       
-      // Always add email condition for non-ObjectId values
+      // Add conditions for non-ObjectId values
       queryConditions.push({ email: processedEmpId });
+      
+      // Also check for string representation of _id
+      queryConditions.push({ _id: processedEmpId });
       
       const employee = await Employee.findOne({
         $or: queryConditions
