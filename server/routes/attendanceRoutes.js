@@ -28,11 +28,12 @@ const processEmployeeId = (id) => {
           return new mongoose.Types.ObjectId(id);
         } catch (convertError) {
           console.warn('Failed to convert to ObjectId, using string:', id);
+          // Instead of throwing an error, we'll return the string and let the database query handle validation
           return id;
         }
       }
       
-      // If not a valid ObjectId string, but not empty, use as is
+      // If not a valid ObjectId string, but not empty, return as is
       if (id.length > 0) {
         return id;
       }
@@ -56,11 +57,31 @@ router.get("/employee/:empId/:month/:year", async (req, res) => {
   const { empId, month, year } = req.params;
 
   try {
-    const employeeId = processEmployeeId(empId);
-    console.log('GET /employee - Processing employeeId:', { original: empId, processed: employeeId });
+    // Process employeeId
+    let processedEmpId = processEmployeeId(empId);
+    console.log('GET /employee - Processing employeeId:', { original: empId, processed: processedEmpId });
+
+    // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
+    if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
+      const employee = await Employee.findOne({
+        $or: [
+          { _id: processedEmpId },
+          { id: processedEmpId },
+          { email: processedEmpId }
+        ]
+      });
+      
+      if (!employee) {
+        return res.status(400).json({ 
+          error: "Employee not found with provided ID: " + empId
+        });
+      }
+      
+      processedEmpId = employee._id;
+    }
 
     const records = await Attendance.find({
-      employeeId: employeeId,
+      employeeId: processedEmpId,
       date: {
         $gte: new Date(year, month - 1, 1),
         $lte: new Date(year, month, 0),
@@ -80,7 +101,7 @@ router.post("/checkin", async (req, res) => {
     const { employeeId, location } = req.body;
     
     // Process employeeId
-    const processedEmpId = processEmployeeId(employeeId);
+    let processedEmpId = processEmployeeId(employeeId);
     console.log('POST /checkin - Processing employeeId:', { original: employeeId, processed: processedEmpId });
     
     // Validate that we have an employeeId
@@ -88,6 +109,25 @@ router.post("/checkin", async (req, res) => {
       return res.status(400).json({ 
         error: "Employee ID is required" 
       });
+    }
+    
+    // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
+    if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
+      const employee = await Employee.findOne({
+        $or: [
+          { _id: processedEmpId },
+          { id: processedEmpId },
+          { email: processedEmpId }
+        ]
+      });
+      
+      if (!employee) {
+        return res.status(400).json({ 
+          error: "Employee not found with provided ID: " + employeeId
+        });
+      }
+      
+      processedEmpId = employee._id;
     }
     
     // Get today's date
@@ -153,7 +193,7 @@ router.post("/checkout", async (req, res) => {
     const { employeeId } = req.body;
     
     // Process employeeId
-    const processedEmpId = processEmployeeId(employeeId);
+    let processedEmpId = processEmployeeId(employeeId);
     console.log('POST /checkout - Processing employeeId:', { original: employeeId, processed: processedEmpId });
     
     // Validate that we have an employeeId
@@ -161,6 +201,25 @@ router.post("/checkout", async (req, res) => {
       return res.status(400).json({ 
         error: "Employee ID is required" 
       });
+    }
+    
+    // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
+    if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
+      const employee = await Employee.findOne({
+        $or: [
+          { _id: processedEmpId },
+          { id: processedEmpId },
+          { email: processedEmpId }
+        ]
+      });
+      
+      if (!employee) {
+        return res.status(400).json({ 
+          error: "Employee not found with provided ID: " + employeeId
+        });
+      }
+      
+      processedEmpId = employee._id;
     }
     
     // Get today's date
@@ -234,7 +293,7 @@ router.get("/today/:employeeId", async (req, res) => {
     const { employeeId } = req.params;
     
     // Process employeeId
-    const processedEmpId = processEmployeeId(employeeId);
+    let processedEmpId = processEmployeeId(employeeId);
     console.log('GET /today - Processing employeeId:', { original: employeeId, processed: processedEmpId });
     
     // Validate that we have an employeeId
@@ -242,6 +301,25 @@ router.get("/today/:employeeId", async (req, res) => {
       return res.status(400).json({ 
         error: "Employee ID is required" 
       });
+    }
+    
+    // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
+    if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
+      const employee = await Employee.findOne({
+        $or: [
+          { _id: processedEmpId },
+          { id: processedEmpId },
+          { email: processedEmpId }
+        ]
+      });
+      
+      if (!employee) {
+        return res.status(400).json({ 
+          error: "Employee not found with provided ID: " + employeeId
+        });
+      }
+      
+      processedEmpId = employee._id;
     }
     
     // Get today's date

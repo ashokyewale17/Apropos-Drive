@@ -74,7 +74,6 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/employees', require('./routes/employees'));
-app.use("/api/attendance", require("./routes/attendance"));
 app.use("/api/employee", require("./routes/employeeRoutes"));
 app.use("/api/attendance-edit", require("./routes/attendanceEditRoutes"));
 app.use("/api/attendance-records", require("./routes/attendanceRoutes")); // Add this line
