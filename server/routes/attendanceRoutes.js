@@ -63,12 +63,19 @@ router.get("/employee/:empId/:month/:year", async (req, res) => {
 
     // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
     if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
-      // Try to find the employee by _id, or email (removing the id field lookup)
+      // Build query conditions based on whether the value is a valid ObjectId or not
+      const queryConditions = [];
+      
+      // Only add _id condition if it's a valid ObjectId string
+      if (mongoose.Types.ObjectId.isValid(processedEmpId)) {
+        queryConditions.push({ _id: processedEmpId });
+      }
+      
+      // Always add email condition for non-ObjectId values
+      queryConditions.push({ email: processedEmpId });
+      
       const employee = await Employee.findOne({
-        $or: [
-          { _id: processedEmpId },
-          { email: processedEmpId }
-        ]
+        $or: queryConditions
       });
       
       if (!employee) {
@@ -113,12 +120,19 @@ router.post("/checkin", async (req, res) => {
     
     // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
     if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
-      // Try to find the employee by _id, or email (removing the id field lookup)
+      // Build query conditions based on whether the value is a valid ObjectId or not
+      const queryConditions = [];
+      
+      // Only add _id condition if it's a valid ObjectId string
+      if (mongoose.Types.ObjectId.isValid(processedEmpId)) {
+        queryConditions.push({ _id: processedEmpId });
+      }
+      
+      // Always add email condition for non-ObjectId values
+      queryConditions.push({ email: processedEmpId });
+      
       const employee = await Employee.findOne({
-        $or: [
-          { _id: processedEmpId },
-          { email: processedEmpId }
-        ]
+        $or: queryConditions
       });
       
       if (!employee) {
@@ -205,12 +219,19 @@ router.post("/checkout", async (req, res) => {
     
     // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
     if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
-      // Try to find the employee by _id, or email (removing the id field lookup)
+      // Build query conditions based on whether the value is a valid ObjectId or not
+      const queryConditions = [];
+      
+      // Only add _id condition if it's a valid ObjectId string
+      if (mongoose.Types.ObjectId.isValid(processedEmpId)) {
+        queryConditions.push({ _id: processedEmpId });
+      }
+      
+      // Always add email condition for non-ObjectId values
+      queryConditions.push({ email: processedEmpId });
+      
       const employee = await Employee.findOne({
-        $or: [
-          { _id: processedEmpId },
-          { email: processedEmpId }
-        ]
+        $or: queryConditions
       });
       
       if (!employee) {
@@ -305,12 +326,19 @@ router.get("/today/:employeeId", async (req, res) => {
     
     // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
     if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
-      // Try to find the employee by _id, or email (removing the id field lookup)
+      // Build query conditions based on whether the value is a valid ObjectId or not
+      const queryConditions = [];
+      
+      // Only add _id condition if it's a valid ObjectId string
+      if (mongoose.Types.ObjectId.isValid(processedEmpId)) {
+        queryConditions.push({ _id: processedEmpId });
+      }
+      
+      // Always add email condition for non-ObjectId values
+      queryConditions.push({ email: processedEmpId });
+      
       const employee = await Employee.findOne({
-        $or: [
-          { _id: processedEmpId },
-          { email: processedEmpId }
-        ]
+        $or: queryConditions
       });
       
       if (!employee) {
