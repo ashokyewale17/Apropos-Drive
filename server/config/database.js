@@ -22,7 +22,7 @@ const connectDB = async () => {
           socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
           maxPoolSize: 10, // Maintain up to 10 socket connections
           bufferMaxEntries: 0, // Disable mongoose buffering
-          bufferCommands: false, // Disable mongoose buffering
+          bufferCommands: true, // Enable mongoose buffering to queue operations until connection is ready
         });
 
         console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
@@ -38,6 +38,8 @@ const connectDB = async () => {
     if (!connected) {
       throw lastError;
     }
+    
+    return mongoose.connection;
   } catch (error) {
     console.error('❌ Database connection error:', error.message);
     console.log('\n📋 Troubleshooting Steps:');
@@ -51,8 +53,7 @@ const connectDB = async () => {
     console.log('   - Visit: https://www.mongodb.com/cloud/atlas');
     console.log('   - Update MONGODB_URI in .env file\n');
     
-    // Don't exit the process, let the server run without database for now
-    // process.exit(1);
+    throw error; // Re-throw the error so the server can handle it properly
   }
 };
 
