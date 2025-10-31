@@ -63,10 +63,10 @@ router.get("/employee/:empId/:month/:year", async (req, res) => {
 
     // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
     if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
+      // Try to find the employee by _id, or email (removing the id field lookup)
       const employee = await Employee.findOne({
         $or: [
           { _id: processedEmpId },
-          { id: processedEmpId },
           { email: processedEmpId }
         ]
       });
@@ -113,10 +113,10 @@ router.post("/checkin", async (req, res) => {
     
     // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
     if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
+      // Try to find the employee by _id, or email (removing the id field lookup)
       const employee = await Employee.findOne({
         $or: [
           { _id: processedEmpId },
-          { id: processedEmpId },
           { email: processedEmpId }
         ]
       });
@@ -205,10 +205,10 @@ router.post("/checkout", async (req, res) => {
     
     // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
     if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
+      // Try to find the employee by _id, or email (removing the id field lookup)
       const employee = await Employee.findOne({
         $or: [
           { _id: processedEmpId },
-          { id: processedEmpId },
           { email: processedEmpId }
         ]
       });
@@ -305,10 +305,10 @@ router.get("/today/:employeeId", async (req, res) => {
     
     // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
     if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
+      // Try to find the employee by _id, or email (removing the id field lookup)
       const employee = await Employee.findOne({
         $or: [
           { _id: processedEmpId },
-          { id: processedEmpId },
           { email: processedEmpId }
         ]
       });
