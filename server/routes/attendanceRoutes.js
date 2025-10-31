@@ -4,7 +4,7 @@ const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
 const mongoose = require("mongoose");
 
-// Enhanced helper function to handle employeeId conversion
+// Enhanced helper function to process employeeId
 const processEmployeeId = (id) => {
   try {
     // Handle null/undefined
@@ -22,18 +22,23 @@ const processEmployeeId = (id) => {
       // Trim whitespace
       id = id.trim();
       
-      // Check if it's a valid ObjectId string
+      // If it's a valid ObjectId string, convert it
       if (mongoose.Types.ObjectId.isValid(id)) {
-        return new mongoose.Types.ObjectId(id);
+        try {
+          return new mongoose.Types.ObjectId(id);
+        } catch (convertError) {
+          console.warn('Failed to convert to ObjectId, using string:', id);
+          return id;
+        }
       }
       
-      // If not a valid ObjectId, but it's a non-empty string, use as is
+      // If not a valid ObjectId string, but not empty, use as is
       if (id.length > 0) {
         return id;
       }
     }
     
-    // For numbers or other types, convert to string
+    // For numbers, convert to string
     if (typeof id === 'number') {
       return id.toString();
     }
@@ -41,7 +46,7 @@ const processEmployeeId = (id) => {
     // Return as is for any other case
     return id;
   } catch (error) {
-    console.warn('Failed to process employeeId, using original:', id, error.message);
+    console.warn('Error processing employeeId, using original:', id, error.message);
     return id;
   }
 };
@@ -51,9 +56,8 @@ router.get("/employee/:empId/:month/:year", async (req, res) => {
   const { empId, month, year } = req.params;
 
   try {
-    // Process employeeId with enhanced error handling
     const employeeId = processEmployeeId(empId);
-    console.log('Processing employeeId for GET:', { original: empId, processed: employeeId, type: typeof employeeId });
+    console.log('GET /employee - Processing employeeId:', { original: empId, processed: employeeId });
 
     const records = await Attendance.find({
       employeeId: employeeId,
@@ -65,11 +69,7 @@ router.get("/employee/:empId/:month/:year", async (req, res) => {
 
     res.json(records);
   } catch (error) {
-    console.error('Error in /employee/:empId/:month/:year:', {
-      error: error.message,
-      employeeId: req.params.empId,
-      stack: error.stack
-    });
+    console.error('Error in GET /employee/:empId/:month/:year:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -79,9 +79,9 @@ router.post("/checkin", async (req, res) => {
   try {
     const { employeeId, location } = req.body;
     
-    // Process employeeId with enhanced error handling
+    // Process employeeId
     const processedEmpId = processEmployeeId(employeeId);
-    console.log('Processing employeeId for checkin:', { original: employeeId, processed: processedEmpId, type: typeof processedEmpId });
+    console.log('POST /checkin - Processing employeeId:', { original: employeeId, processed: processedEmpId });
     
     // Validate that we have an employeeId
     if (!processedEmpId) {
@@ -108,17 +108,6 @@ router.post("/checkin", async (req, res) => {
       });
     }
     
-    // Verify employee exists (only if we have a valid ObjectId format)
-    if (processedEmpId instanceof mongoose.Types.ObjectId || 
-        (typeof processedEmpId === 'string' && mongoose.Types.ObjectId.isValid(processedEmpId))) {
-      const employee = await Employee.findById(processedEmpId);
-      if (!employee) {
-        return res.status(400).json({ 
-          error: "Employee not found" 
-        });
-      }
-    }
-    
     // Create new attendance record
     attendanceRecord = new Attendance({
       employeeId: processedEmpId,
@@ -129,7 +118,7 @@ router.post("/checkin", async (req, res) => {
     
     await attendanceRecord.save();
     
-    // Populate employee details (if employeeId is a valid ObjectId)
+    // Try to populate employee details
     try {
       await attendanceRecord.populate('employeeId', 'name department');
     } catch (populateError) {
@@ -140,7 +129,7 @@ router.post("/checkin", async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.emit('employeeCheckIn', {
-        employeeId: employeeId, // Keep original string ID for client-side
+        employeeId: employeeId, // Keep original for client-side matching
         employeeName: attendanceRecord.employeeId?.name || 'Unknown',
         department: attendanceRecord.employeeId?.department || 'Unknown',
         checkInTime: attendanceRecord.inTime,
@@ -153,12 +142,7 @@ router.post("/checkin", async (req, res) => {
       record: attendanceRecord
     });
   } catch (error) {
-    // Log the full error for debugging
-    console.error('Check-in error:', {
-      error: error.message,
-      employeeId: req.body.employeeId,
-      stack: error.stack
-    });
+    console.error('Error in POST /checkin:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -168,9 +152,9 @@ router.post("/checkout", async (req, res) => {
   try {
     const { employeeId } = req.body;
     
-    // Process employeeId with enhanced error handling
+    // Process employeeId
     const processedEmpId = processEmployeeId(employeeId);
-    console.log('Processing employeeId for checkout:', { original: employeeId, processed: processedEmpId, type: typeof processedEmpId });
+    console.log('POST /checkout - Processing employeeId:', { original: employeeId, processed: processedEmpId });
     
     // Validate that we have an employeeId
     if (!processedEmpId) {
@@ -214,7 +198,7 @@ router.post("/checkout", async (req, res) => {
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     const hoursWorked = `${diffHours}h ${diffMinutes}m`;
     
-    // Populate employee details (if employeeId is a valid ObjectId)
+    // Try to populate employee details
     try {
       await attendanceRecord.populate('employeeId', 'name department');
     } catch (populateError) {
@@ -225,7 +209,7 @@ router.post("/checkout", async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.emit('employeeCheckOut', {
-        employeeId: employeeId, // Keep original string ID for client-side
+        employeeId: employeeId, // Keep original for client-side matching
         employeeName: attendanceRecord.employeeId?.name || 'Unknown',
         department: attendanceRecord.employeeId?.department || 'Unknown',
         checkOutTime: attendanceRecord.outTime,
@@ -239,12 +223,7 @@ router.post("/checkout", async (req, res) => {
       hoursWorked: hoursWorked
     });
   } catch (error) {
-    // Log the full error for debugging
-    console.error('Check-out error:', {
-      error: error.message,
-      employeeId: req.body.employeeId,
-      stack: error.stack
-    });
+    console.error('Error in POST /checkout:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -254,9 +233,9 @@ router.get("/today/:employeeId", async (req, res) => {
   try {
     const { employeeId } = req.params;
     
-    // Process employeeId with enhanced error handling
+    // Process employeeId
     const processedEmpId = processEmployeeId(employeeId);
-    console.log('Processing employeeId for today:', { original: employeeId, processed: processedEmpId, type: typeof processedEmpId });
+    console.log('GET /today - Processing employeeId:', { original: employeeId, processed: processedEmpId });
     
     // Validate that we have an employeeId
     if (!processedEmpId) {
@@ -288,12 +267,7 @@ router.get("/today/:employeeId", async (req, res) => {
       record: attendanceRecord
     });
   } catch (error) {
-    // Log the full error for debugging
-    console.error('Today status error:', {
-      error: error.message,
-      employeeId: req.params.employeeId,
-      stack: error.stack
-    });
+    console.error('Error in GET /today/:employeeId:', error);
     res.status(500).json({ error: error.message });
   }
 });
