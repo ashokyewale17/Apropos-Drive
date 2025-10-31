@@ -77,6 +77,17 @@ router.get("/employee/:empId/:month/:year", async (req, res) => {
       // Also check for string representation of _id
       queryConditions.push({ _id: processedEmpId });
       
+      // If it's a numeric string, try to find by position in collection
+      if (/^\d+$/.test(processedEmpId)) {
+        const numericId = parseInt(processedEmpId);
+        // Try to find employee by their position (1-based indexing)
+        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 }).limit(numericId);
+        if (employees.length >= numericId) {
+          const employee = employees[numericId - 1];
+          queryConditions.push({ _id: employee._id });
+        }
+      }
+      
       const employee = await Employee.findOne({
         $or: queryConditions
       });
@@ -136,6 +147,17 @@ router.post("/checkin", async (req, res) => {
       
       // Also check for string representation of _id
       queryConditions.push({ _id: processedEmpId });
+      
+      // If it's a numeric string, try to find by position in collection
+      if (/^\d+$/.test(processedEmpId)) {
+        const numericId = parseInt(processedEmpId);
+        // Try to find employee by their position (1-based indexing)
+        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 }).limit(numericId);
+        if (employees.length >= numericId) {
+          const employee = employees[numericId - 1];
+          queryConditions.push({ _id: employee._id });
+        }
+      }
       
       const employee = await Employee.findOne({
         $or: queryConditions
@@ -238,6 +260,17 @@ router.post("/checkout", async (req, res) => {
       
       // Also check for string representation of _id
       queryConditions.push({ _id: processedEmpId });
+      
+      // If it's a numeric string, try to find by position in collection
+      if (/^\d+$/.test(processedEmpId)) {
+        const numericId = parseInt(processedEmpId);
+        // Try to find employee by their position (1-based indexing)
+        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 }).limit(numericId);
+        if (employees.length >= numericId) {
+          const employee = employees[numericId - 1];
+          queryConditions.push({ _id: employee._id });
+        }
+      }
       
       const employee = await Employee.findOne({
         $or: queryConditions
@@ -348,6 +381,17 @@ router.get("/today/:employeeId", async (req, res) => {
       
       // Also check for string representation of _id
       queryConditions.push({ _id: processedEmpId });
+      
+      // If it's a numeric string, try to find by position in collection
+      if (/^\d+$/.test(processedEmpId)) {
+        const numericId = parseInt(processedEmpId);
+        // Try to find employee by their position (1-based indexing)
+        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 }).limit(numericId);
+        if (employees.length >= numericId) {
+          const employee = employees[numericId - 1];
+          queryConditions.push({ _id: employee._id });
+        }
+      }
       
       const employee = await Employee.findOne({
         $or: queryConditions
