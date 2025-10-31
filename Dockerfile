@@ -56,8 +56,9 @@ WORKDIR /app
 COPY --from=backend-build /app/server ./server
 COPY --from=frontend-build /app/client/dist ./client/dist
 
-# Copy root package.json for production scripts
+# Copy root package.json and .env files for production scripts
 COPY package*.json ./
+COPY .env* ./ 2>/dev/null || echo "No .env files to copy"
 
 # Set environment variables
 ENV NODE_ENV=production \
