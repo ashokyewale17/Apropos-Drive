@@ -17,34 +17,17 @@ const processEmployeeId = (id) => {
       return id;
     }
     
-    // If it's a string
-    if (typeof id === 'string') {
-      // Trim whitespace
-      id = id.trim();
-      
-      // If it's a valid ObjectId string, convert it
-      if (mongoose.Types.ObjectId.isValid(id)) {
-        try {
-          return new mongoose.Types.ObjectId(id);
-        } catch (convertError) {
-          console.warn('Failed to convert to ObjectId, using string:', id);
-          // Instead of throwing an error, we'll return the string and let the database query handle validation
-          return id;
-        }
-      }
-      
-      // If not a valid ObjectId string, but not empty, return as is
-      if (id.length > 0) {
+    // If it's a string that looks like an ObjectId, convert it
+    if (typeof id === 'string' && mongoose.Types.ObjectId.isValid(id)) {
+      try {
+        return new mongoose.Types.ObjectId(id);
+      } catch (e) {
+        // If conversion fails, return the original string
         return id;
       }
     }
     
-    // For numbers, convert to string
-    if (typeof id === 'number') {
-      return id.toString();
-    }
-    
-    // Return as is for any other case
+    // For any other case, return as is
     return id;
   } catch (error) {
     console.warn('Error processing employeeId, using original:', id, error.message);
@@ -63,34 +46,23 @@ router.get("/employee/:empId/:month/:year", async (req, res) => {
 
     // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
     if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
-      // Build query conditions based on whether the value is a valid ObjectId or not
-      const queryConditions = [];
+      let employee = null;
       
-      // Only add _id condition if it's a valid ObjectId string
+      // Try different lookup strategies
       if (mongoose.Types.ObjectId.isValid(processedEmpId)) {
-        queryConditions.push({ _id: processedEmpId });
-      }
-      
-      // Add conditions for non-ObjectId values
-      queryConditions.push({ email: processedEmpId });
-      
-      // Also check for string representation of _id
-      queryConditions.push({ _id: processedEmpId });
-      
-      // If it's a numeric string, try to find by position in collection
-      if (/^\d+$/.test(processedEmpId)) {
+        // If it's a valid ObjectId string, try direct lookup
+        employee = await Employee.findById(processedEmpId);
+      } else if (/^\d+$/.test(processedEmpId)) {
+        // If it's a numeric string, try to find by position
         const numericId = parseInt(processedEmpId);
-        // Try to find employee by their position (1-based indexing)
         const employees = await Employee.find({ isActive: true }).sort({ _id: 1 }).limit(numericId);
         if (employees.length >= numericId) {
-          const employee = employees[numericId - 1];
-          queryConditions.push({ _id: employee._id });
+          employee = employees[numericId - 1];
         }
+      } else {
+        // For other values, try email lookup
+        employee = await Employee.findOne({ email: processedEmpId });
       }
-      
-      const employee = await Employee.findOne({
-        $or: queryConditions
-      });
       
       if (!employee) {
         return res.status(400).json({ 
@@ -134,34 +106,23 @@ router.post("/checkin", async (req, res) => {
     
     // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
     if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
-      // Build query conditions based on whether the value is a valid ObjectId or not
-      const queryConditions = [];
+      let employee = null;
       
-      // Only add _id condition if it's a valid ObjectId string
+      // Try different lookup strategies
       if (mongoose.Types.ObjectId.isValid(processedEmpId)) {
-        queryConditions.push({ _id: processedEmpId });
-      }
-      
-      // Add conditions for non-ObjectId values
-      queryConditions.push({ email: processedEmpId });
-      
-      // Also check for string representation of _id
-      queryConditions.push({ _id: processedEmpId });
-      
-      // If it's a numeric string, try to find by position in collection
-      if (/^\d+$/.test(processedEmpId)) {
+        // If it's a valid ObjectId string, try direct lookup
+        employee = await Employee.findById(processedEmpId);
+      } else if (/^\d+$/.test(processedEmpId)) {
+        // If it's a numeric string, try to find by position
         const numericId = parseInt(processedEmpId);
-        // Try to find employee by their position (1-based indexing)
         const employees = await Employee.find({ isActive: true }).sort({ _id: 1 }).limit(numericId);
         if (employees.length >= numericId) {
-          const employee = employees[numericId - 1];
-          queryConditions.push({ _id: employee._id });
+          employee = employees[numericId - 1];
         }
+      } else {
+        // For other values, try email lookup
+        employee = await Employee.findOne({ email: processedEmpId });
       }
-      
-      const employee = await Employee.findOne({
-        $or: queryConditions
-      });
       
       if (!employee) {
         return res.status(400).json({ 
@@ -247,34 +208,23 @@ router.post("/checkout", async (req, res) => {
     
     // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
     if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
-      // Build query conditions based on whether the value is a valid ObjectId or not
-      const queryConditions = [];
+      let employee = null;
       
-      // Only add _id condition if it's a valid ObjectId string
+      // Try different lookup strategies
       if (mongoose.Types.ObjectId.isValid(processedEmpId)) {
-        queryConditions.push({ _id: processedEmpId });
-      }
-      
-      // Add conditions for non-ObjectId values
-      queryConditions.push({ email: processedEmpId });
-      
-      // Also check for string representation of _id
-      queryConditions.push({ _id: processedEmpId });
-      
-      // If it's a numeric string, try to find by position in collection
-      if (/^\d+$/.test(processedEmpId)) {
+        // If it's a valid ObjectId string, try direct lookup
+        employee = await Employee.findById(processedEmpId);
+      } else if (/^\d+$/.test(processedEmpId)) {
+        // If it's a numeric string, try to find by position
         const numericId = parseInt(processedEmpId);
-        // Try to find employee by their position (1-based indexing)
         const employees = await Employee.find({ isActive: true }).sort({ _id: 1 }).limit(numericId);
         if (employees.length >= numericId) {
-          const employee = employees[numericId - 1];
-          queryConditions.push({ _id: employee._id });
+          employee = employees[numericId - 1];
         }
+      } else {
+        // For other values, try email lookup
+        employee = await Employee.findOne({ email: processedEmpId });
       }
-      
-      const employee = await Employee.findOne({
-        $or: queryConditions
-      });
       
       if (!employee) {
         return res.status(400).json({ 
@@ -368,34 +318,23 @@ router.get("/today/:employeeId", async (req, res) => {
     
     // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
     if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
-      // Build query conditions based on whether the value is a valid ObjectId or not
-      const queryConditions = [];
+      let employee = null;
       
-      // Only add _id condition if it's a valid ObjectId string
+      // Try different lookup strategies
       if (mongoose.Types.ObjectId.isValid(processedEmpId)) {
-        queryConditions.push({ _id: processedEmpId });
-      }
-      
-      // Add conditions for non-ObjectId values
-      queryConditions.push({ email: processedEmpId });
-      
-      // Also check for string representation of _id
-      queryConditions.push({ _id: processedEmpId });
-      
-      // If it's a numeric string, try to find by position in collection
-      if (/^\d+$/.test(processedEmpId)) {
+        // If it's a valid ObjectId string, try direct lookup
+        employee = await Employee.findById(processedEmpId);
+      } else if (/^\d+$/.test(processedEmpId)) {
+        // If it's a numeric string, try to find by position
         const numericId = parseInt(processedEmpId);
-        // Try to find employee by their position (1-based indexing)
         const employees = await Employee.find({ isActive: true }).sort({ _id: 1 }).limit(numericId);
         if (employees.length >= numericId) {
-          const employee = employees[numericId - 1];
-          queryConditions.push({ _id: employee._id });
+          employee = employees[numericId - 1];
         }
+      } else {
+        // For other values, try email lookup
+        employee = await Employee.findOne({ email: processedEmpId });
       }
-      
-      const employee = await Employee.findOne({
-        $or: queryConditions
-      });
       
       if (!employee) {
         return res.status(400).json({ 
