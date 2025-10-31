@@ -7,8 +7,8 @@ services:
     container_name: employee_mongodb
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password123}
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
       MONGO_INITDB_DATABASE: employee_management
     ports:
       - "27017:27017"
@@ -33,16 +33,14 @@ services:
     restart: unless-stopped
     ports:
       - "3000:5000"  # External port 3000 maps to internal port 5000
-    env_file:
-      - .env
     environment:
       NODE_ENV: production
       PORT: 5000
-      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-password123}@mongodb:27017/employee_management?authSource=admin
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
-      JWT_EXPIRES_IN: 30d
-      CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
       HOST: 0.0.0.0
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/employee_management?authSource=admin
+      JWT_SECRET: super-long-random-jwt-secret-key-for-employee-management-production-2024
+      JWT_EXPIRES_IN: 30d
+      CLIENT_URL: http://localhost:3000
     depends_on:
       mongodb:
         condition: service_healthy

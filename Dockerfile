@@ -58,7 +58,7 @@ COPY --from=frontend-build /app/client/dist ./client/dist
 
 # Copy root package.json and .env files for production scripts
 COPY package*.json ./
-COPY .env* ./ 2>/dev/null || echo "No .env files to copy"
+COPY .env ./
 
 # Set environment variables
 ENV NODE_ENV=production \
