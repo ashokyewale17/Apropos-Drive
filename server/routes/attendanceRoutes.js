@@ -4,6 +4,17 @@ const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
 const mongoose = require("mongoose");
 
+// Mock employee data mapping to match the frontend mock data
+const mockEmployeeMap = {
+  "1": "tushar.mhaskar@company.com",
+  "2": "vijay.solanki@company.com",
+  "3": "pinky.chakrabarty@company.com",
+  "4": "sanket.pawal@company.com",
+  "5": "ashok.yewale@company.com",
+  "6": "harshal.lohar@company.com",
+  "7": "prasanna.pandit@company.com"
+};
+
 // Helper function to find employee by various ID formats including mock IDs
 const findEmployeeByAnyId = async (id) => {
   try {
@@ -24,11 +35,22 @@ const findEmployeeByAnyId = async (id) => {
     if (typeof id === 'string') {
       console.log('ID is a string, trying different lookup methods');
       
-      // Try to find by email first
+      // First try direct email lookup
       let employee = await Employee.findOne({ email: id });
       if (employee) {
         console.log('Found employee by email');
         return employee;
+      }
+      
+      // SPECIAL CASE FOR MOCK SYSTEM:
+      // If the ID is a mock numeric ID, map it to the corresponding email
+      if (mockEmployeeMap[id]) {
+        console.log('Found mock ID, mapping to email:', mockEmployeeMap[id]);
+        employee = await Employee.findOne({ email: mockEmployeeMap[id] });
+        if (employee) {
+          console.log('Found employee by mapped email');
+          return employee;
+        }
       }
       
       // Try to find by _id if it's a valid ObjectId string
@@ -51,34 +73,18 @@ const findEmployeeByAnyId = async (id) => {
         return employee;
       }
       
-      // SPECIAL CASE FOR MOCK SYSTEM:
-      // In the mock system, frontend uses simple numeric IDs (1, 2, 3, 4, 5, etc.)
-      // We need to find the employee by position in the database
+      // Alternative approach for numeric IDs - try to find by position
       if (/^\d+$/.test(id)) {
         const numericId = parseInt(id);
-        console.log('Looking for employee by position (mock system):', numericId);
+        console.log('Looking for employee by position:', numericId);
         
-        // Get all active employees sorted by _id to maintain consistent order
-        // This should match the order in which employees were created in the mock system
-        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 });
+        // Get all active employees sorted by creation date
+        const employees = await Employee.find({ isActive: true }).sort({ createdAt: 1 });
         console.log('Found', employees.length, 'active employees');
         
-        // In the mock system:
-        // ID 1 = first employee in sorted list
-        // ID 2 = second employee in sorted list
-        // etc.
-        // Arrays are 0-indexed, so ID 1 = index 0, ID 2 = index 1, etc.
         if (employees.length >= numericId && numericId > 0) {
-          console.log('Returning employee at index', numericId - 1);
+          console.log('Returning employee at position', numericId - 1);
           return employees[numericId - 1];
-        }
-        
-        // Alternative approach: Try sorting by creation date
-        console.log('Trying alternative sort by creation date');
-        const employeesByDate = await Employee.find({ isActive: true }).sort({ createdAt: 1 });
-        if (employeesByDate.length >= numericId && numericId > 0) {
-          console.log('Returning employee at index', numericId - 1, 'from date-sorted list');
-          return employeesByDate[numericId - 1];
         }
       }
     }
