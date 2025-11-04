@@ -894,10 +894,10 @@ const AdminDashboard = () => {
       if (response.ok) {
         const createdEmployee = await response.json();
         
-        // Add to local state
+        // Add to local state with the correct database ID
         const employee = {
           ...newEmployee,
-          id: createdEmployee._id, // Use the actual MongoDB _id
+          id: createdEmployee._id.toString(), // Use the actual MongoDB _id as string
           status: 'active',
           checkIn: '-',
           hours: '0:00',
@@ -922,11 +922,12 @@ const AdminDashboard = () => {
           totalEmployees: updatedEmployees.length
         }));
       } else {
-        console.error('Failed to create employee in database');
+        const errorData = await response.json();
+        console.error('Failed to create employee in database:', errorData.message);
         // Still add to local storage for demo purposes
         const employee = {
           ...newEmployee,
-          id: Math.max(...realEmployees.map(e => e.id)) + 1,
+          id: Math.max(...realEmployees.map(e => typeof e.id === 'number' ? e.id : parseInt(e.id) || 0)) + 1,
           status: 'active',
           checkIn: '-',
           hours: '0:00',
@@ -955,7 +956,7 @@ const AdminDashboard = () => {
       // Still add to local storage for demo purposes
       const employee = {
         ...newEmployee,
-        id: Math.max(...realEmployees.map(e => e.id)) + 1,
+        id: Math.max(...realEmployees.map(e => typeof e.id === 'number' ? e.id : parseInt(e.id) || 0)) + 1,
         status: 'active',
         checkIn: '-',
         hours: '0:00',

@@ -75,6 +75,30 @@ const findEmployeeByAnyId = async (id) => {
         return employee;
       }
       
+      // For numeric IDs beyond 7, we need to handle the case where localStorage might have
+      // simple numeric IDs but the database has real ObjectIds
+      if (/^\d+$/.test(id) && parseInt(id) > 7) {
+        // Get all employees from the database
+        const allEmployees = await Employee.find({ isActive: true });
+        
+        // Sort employees by creation date to maintain consistent ordering
+        allEmployees.sort((a, b) => a.createdAt - b.createdAt);
+        
+        // Try to find by index (assuming numeric IDs correspond to order of creation)
+        // IDs 1-7 are reserved for mock employees, so ID 8 would be the first real employee, etc.
+        const index = parseInt(id) - 8;
+        if (index >= 0 && index < allEmployees.length) {
+          return allEmployees[index];
+        }
+        
+        // If index method fails, try to match by partial ObjectId
+        for (const emp of allEmployees) {
+          if (emp._id.toString().includes(id)) {
+            return emp;
+          }
+        }
+      }
+      
       // For any other string ID, try to find by _id
       // This will handle both MongoDB ObjectIds and numeric IDs for newly created employees
       employee = await Employee.findById(id);
@@ -115,6 +139,13 @@ router.post("/checkin", async (req, res) => {
     
     if (!employee) {
       console.log('Employee not found for ID:', employeeId);
+      // Log additional debugging info
+      const allEmployees = await Employee.find({ isActive: true });
+      console.log('All active employees in database:', allEmployees.map(e => ({ 
+        _id: e._id, 
+        name: e.name, 
+        email: e.email 
+      })));
       return res.status(400).json({ 
         error: "Employee not found with provided ID: " + employeeId
       });
@@ -198,6 +229,13 @@ router.post("/checkout", async (req, res) => {
     
     if (!employee) {
       console.log('Employee not found for ID:', employeeId);
+      // Log additional debugging info
+      const allEmployees = await Employee.find({ isActive: true });
+      console.log('All active employees in database:', allEmployees.map(e => ({ 
+        _id: e._id, 
+        name: e.name, 
+        email: e.email 
+      })));
       return res.status(400).json({ 
         error: "Employee not found with provided ID: " + employeeId
       });
@@ -289,6 +327,13 @@ router.get("/today/:employeeId", async (req, res) => {
     
     if (!employee) {
       console.log('Employee not found for ID:', employeeId);
+      // Log additional debugging info
+      const allEmployees = await Employee.find({ isActive: true });
+      console.log('All active employees in database:', allEmployees.map(e => ({ 
+        _id: e._id, 
+        name: e.name, 
+        email: e.email 
+      })));
       return res.status(400).json({ 
         error: "Employee not found with provided ID: " + employeeId
       });
@@ -336,6 +381,13 @@ router.get("/employee/:empId/:month/:year", async (req, res) => {
     
     if (!employee) {
       console.log('Employee not found for ID:', empId);
+      // Log additional debugging info
+      const allEmployees = await Employee.find({ isActive: true });
+      console.log('All active employees in database:', allEmployees.map(e => ({ 
+        _id: e._id, 
+        name: e.name, 
+        email: e.email 
+      })));
       return res.status(400).json({ 
         error: "Employee not found with provided ID: " + empId
       });
