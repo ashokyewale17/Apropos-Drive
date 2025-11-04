@@ -75,6 +75,16 @@ const findEmployeeByAnyId = async (id) => {
         return employee;
       }
       
+      // For numeric IDs beyond 7, try to find by actual MongoDB _id
+      // This handles newly added employees that have real MongoDB ObjectIds
+      if (/^\d+$/.test(id) && parseInt(id) > 7) {
+        // Try to find employee by their actual MongoDB _id
+        employee = await Employee.findById(id);
+        if (employee) {
+          return employee;
+        }
+      }
+      
       // Last resort: try to find by _id as string
       employee = await Employee.findOne({ _id: id });
       if (employee) {
