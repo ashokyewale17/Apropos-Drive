@@ -4,218 +4,97 @@ const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
 const mongoose = require("mongoose");
 
-// Mock employee data to create if they don't exist
-const mockEmployees = [
-  {
-    name: 'Tushar Mhaskar',
-    email: 'tushar.mhaskar@company.com',
-    password: 'admin123',
-    department: 'Admin',
-    position: 'Admin & HR',
-    role: 'admin',
-    salary: 80000,
-    phone: '+1234567891',
-    address: '123 Admin St, City, State'
-  },
-  {
-    name: 'Vijay Solanki',
-    email: 'vijay.solanki@company.com',
-    password: 'test123',
-    department: 'Testing',
-    position: 'QA Engineer',
-    role: 'employee',
-    salary: 60000,
-    phone: '+1234567892',
-    address: '124 Test St, City, State'
-  },
-  {
-    name: 'Pinky Chakrabarty',
-    email: 'pinky.chakrabarty@company.com',
-    password: 'ops123',
-    department: 'Operations',
-    position: 'Operations Manager',
-    role: 'employee',
-    salary: 65000,
-    phone: '+1234567893',
-    address: '125 Ops St, City, State'
-  },
-  {
-    name: 'Sanket Pawal',
-    email: 'sanket.pawal@company.com',
-    password: 'design123',
-    department: 'Design',
-    position: 'UI/UX Designer',
-    role: 'employee',
-    salary: 70000,
-    phone: '+1234567894',
-    address: '126 Design St, City, State'
-  },
-  {
-    name: 'Ashok Yewale',
-    email: 'ashok.yewale@company.com',
-    password: 'soft123',
-    department: 'Software',
-    position: 'Software Developer',
-    role: 'employee',
-    salary: 75000,
-    phone: '+1234567895',
-    address: '127 Software St, City, State'
-  },
-  {
-    name: 'Harshal Lohar',
-    email: 'harshal.lohar@company.com',
-    password: 'soft123',
-    department: 'Software',
-    position: 'Senior Developer',
-    role: 'employee',
-    salary: 85000,
-    phone: '+1234567896',
-    address: '128 Senior St, City, State'
-  },
-  {
-    name: 'Prasanna Pandit',
-    email: 'prasanna.pandit@company.com',
-    password: 'embed123',
-    department: 'Embedded',
-    position: 'Embedded Engineer',
-    role: 'employee',
-    salary: 80000,
-    phone: '+1234567897',
-    address: '129 Embedded St, City, State'
-  }
-];
-
-// Helper function to ensure mock employees exist in database
-const ensureMockEmployeesExist = async () => {
-  try {
-    for (const mockEmployee of mockEmployees) {
-      // Check if employee already exists
-      const existingEmployee = await Employee.findOne({ email: mockEmployee.email });
-      if (!existingEmployee) {
-        // Create the employee
-        const employee = new Employee(mockEmployee);
-        await employee.save();
-        console.log('Created mock employee:', mockEmployee.name);
-      }
-    }
-  } catch (error) {
-    console.error('Error ensuring mock employees exist:', error.message);
-  }
-};
-
-// Helper function to find employee by various ID formats including mock IDs
+// Simplified helper function to find employee - direct approach
 const findEmployeeByAnyId = async (id) => {
   try {
+    console.log('Attempting to find employee with ID:', id);
+    
     // Handle null/undefined
     if (!id) {
       throw new Error('Employee ID is required');
     }
     
-    console.log('Finding employee with ID:', id, 'Type:', typeof id);
-    
-    // First ensure mock employees exist
-    await ensureMockEmployeesExist();
-    
     // If it's already an ObjectId, try direct lookup
     if (id instanceof mongoose.Types.ObjectId) {
-      console.log('ID is already an ObjectId');
       return await Employee.findById(id);
     }
     
     // If it's a string
     if (typeof id === 'string') {
-      console.log('ID is a string, trying different lookup methods');
-      
-      // First try direct email lookup
+      // Try email lookup first
       let employee = await Employee.findOne({ email: id });
       if (employee) {
-        console.log('Found employee by email');
         return employee;
       }
       
-      // Try to find by _id if it's a valid ObjectId string
+      // Try ObjectId string lookup
       if (mongoose.Types.ObjectId.isValid(id)) {
         try {
-          employee = await Employee.findById(new mongoose.Types.ObjectId(id));
-          if (employee) {
-            console.log('Found employee by ObjectId string');
-            return employee;
-          }
+          return await Employee.findById(new mongoose.Types.ObjectId(id));
         } catch (e) {
-          console.log('ObjectId conversion failed:', e.message);
+          // Continue with other methods
         }
-      }
-      
-      // Try to find by string representation of _id
-      employee = await Employee.findOne({ _id: id });
-      if (employee) {
-        console.log('Found employee by string _id');
-        return employee;
       }
       
       // SPECIAL CASE FOR MOCK SYSTEM:
-      // If the ID is a mock numeric ID (1-7), find by position
-      if (/^\d+$/.test(id) && parseInt(id) >= 1 && parseInt(id) <= 7) {
-        const numericId = parseInt(id);
-        console.log('Looking for mock employee by position:', numericId);
-        
-        // Get employees sorted by creation date to maintain consistent order
-        const employees = await Employee.find({ isActive: true }).sort({ createdAt: 1 });
-        console.log('Found', employees.length, 'active employees');
-        
-        if (employees.length >= numericId) {
-          console.log('Returning employee at position', numericId - 1);
-          return employees[numericId - 1];
+      // For numeric IDs 1-7, directly return the corresponding employee by email
+      const mockEmails = {
+        "1": "tushar.mhaskar@company.com",
+        "2": "vijay.solanki@company.com",
+        "3": "pinky.chakrabarty@company.com",
+        "4": "sanket.pawal@company.com",
+        "5": "ashok.yewale@company.com",
+        "6": "harshal.lohar@company.com",
+        "7": "prasanna.pandit@company.com"
+      };
+      
+      if (mockEmails[id]) {
+        employee = await Employee.findOne({ email: mockEmails[id] });
+        // If employee doesn't exist, create them
+        if (!employee) {
+          const mockEmployeeData = {
+            "1": { name: 'Tushar Mhaskar', email: 'tushar.mhaskar@company.com', password: 'admin123', department: 'Admin', position: 'Admin & HR', role: 'admin', salary: 80000, phone: '+1234567891', address: '123 Admin St, City, State' },
+            "2": { name: 'Vijay Solanki', email: 'vijay.solanki@company.com', password: 'test123', department: 'Testing', position: 'QA Engineer', role: 'employee', salary: 60000, phone: '+1234567892', address: '124 Test St, City, State' },
+            "3": { name: 'Pinky Chakrabarty', email: 'pinky.chakrabarty@company.com', password: 'ops123', department: 'Operations', position: 'Operations Manager', role: 'employee', salary: 65000, phone: '+1234567893', address: '125 Ops St, City, State' },
+            "4": { name: 'Sanket Pawal', email: 'sanket.pawal@company.com', password: 'design123', department: 'Design', position: 'UI/UX Designer', role: 'employee', salary: 70000, phone: '+1234567894', address: '126 Design St, City, State' },
+            "5": { name: 'Ashok Yewale', email: 'ashok.yewale@company.com', password: 'soft123', department: 'Software', position: 'Software Developer', role: 'employee', salary: 75000, phone: '+1234567895', address: '127 Software St, City, State' },
+            "6": { name: 'Harshal Lohar', email: 'harshal.lohar@company.com', password: 'soft123', department: 'Software', position: 'Senior Developer', role: 'employee', salary: 85000, phone: '+1234567896', address: '128 Senior St, City, State' },
+            "7": { name: 'Prasanna Pandit', email: 'prasanna.pandit@company.com', password: 'embed123', department: 'Embedded', position: 'Embedded Engineer', role: 'employee', salary: 80000, phone: '+1234567897', address: '129 Embedded St, City, State' }
+          };
+          
+          try {
+            const newEmployee = new Employee(mockEmployeeData[id]);
+            employee = await newEmployee.save();
+            console.log('Created new employee:', employee.name);
+          } catch (createError) {
+            console.error('Error creating employee:', createError.message);
+            // Even if creation fails, try to find by other means
+            employee = await Employee.findOne({ email: mockEmails[id] });
+          }
         }
+        return employee;
+      }
+      
+      // Last resort: try to find by _id as string
+      employee = await Employee.findOne({ _id: id });
+      if (employee) {
+        return employee;
       }
     }
     
-    // If nothing found, return null
-    console.log('No employee found with ID:', id);
     return null;
   } catch (error) {
-    console.error('Error finding employee by ID:', id, error.message);
+    console.error('Error in findEmployeeByAnyId:', error.message);
     return null;
   }
 };
-
-// Get personal attendance for an employee by month/year
-router.get("/employee/:empId/:month/:year", async (req, res) => {
-  const { empId, month, year } = req.params;
-
-  try {
-    console.log('GET /employee called with:', { empId, month, year });
-    
-    // Find employee by various ID formats
-    const employee = await findEmployeeByAnyId(empId);
-    
-    if (!employee) {
-      return res.status(400).json({ 
-        error: "Employee not found with provided ID: " + empId
-      });
-    }
-
-    const records = await Attendance.find({
-      employeeId: employee._id,
-      date: {
-        $gte: new Date(year, month - 1, 1),
-        $lte: new Date(year, month, 0),
-      },
-    });
-
-    res.json(records);
-  } catch (error) {
-    console.error('Error in GET /employee/:empId/:month/:year:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // Check-in endpoint
 router.post("/checkin", async (req, res) => {
   try {
     const { employeeId, location } = req.body;
     
-    console.log('POST /checkin called with:', { employeeId, location });
+    console.log('Check-in request received:', { employeeId, location });
     
     // Validate that we have an employeeId
     if (!employeeId) {
@@ -228,12 +107,13 @@ router.post("/checkin", async (req, res) => {
     const employee = await findEmployeeByAnyId(employeeId);
     
     if (!employee) {
+      console.log('Employee not found for ID:', employeeId);
       return res.status(400).json({ 
         error: "Employee not found with provided ID: " + employeeId
       });
     }
     
-    console.log('Found employee:', employee.name, employee._id);
+    console.log('Found employee for check-in:', employee.name, employee._id);
     
     // Get today's date
     const today = new Date();
@@ -255,13 +135,11 @@ router.post("/checkin", async (req, res) => {
     
     // Create new attendance record with proper ObjectId
     attendanceRecord = new Attendance({
-      employeeId: employee._id, // This is now guaranteed to be a proper ObjectId
+      employeeId: employee._id,
       date: today,
       inTime: new Date(),
       status: "Present"
     });
-    
-    console.log('Creating attendance record with employeeId:', employee._id);
     
     await attendanceRecord.save();
     
@@ -276,7 +154,7 @@ router.post("/checkin", async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.emit('employeeCheckIn', {
-        employeeId: employeeId, // Keep original for client-side matching
+        employeeId: employeeId,
         employeeName: attendanceRecord.employeeId?.name || 'Unknown',
         department: attendanceRecord.employeeId?.department || 'Unknown',
         checkInTime: attendanceRecord.inTime,
@@ -299,7 +177,7 @@ router.post("/checkout", async (req, res) => {
   try {
     const { employeeId } = req.body;
     
-    console.log('POST /checkout called with:', { employeeId });
+    console.log('Check-out request received:', { employeeId });
     
     // Validate that we have an employeeId
     if (!employeeId) {
@@ -312,10 +190,13 @@ router.post("/checkout", async (req, res) => {
     const employee = await findEmployeeByAnyId(employeeId);
     
     if (!employee) {
+      console.log('Employee not found for ID:', employeeId);
       return res.status(400).json({ 
         error: "Employee not found with provided ID: " + employeeId
       });
     }
+    
+    console.log('Found employee for check-out:', employee.name, employee._id);
     
     // Get today's date
     const today = new Date();
@@ -363,7 +244,7 @@ router.post("/checkout", async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.emit('employeeCheckOut', {
-        employeeId: employeeId, // Keep original for client-side matching
+        employeeId: employeeId,
         employeeName: attendanceRecord.employeeId?.name || 'Unknown',
         department: attendanceRecord.employeeId?.department || 'Unknown',
         checkOutTime: attendanceRecord.outTime,
@@ -387,7 +268,7 @@ router.get("/today/:employeeId", async (req, res) => {
   try {
     const { employeeId } = req.params;
     
-    console.log('GET /today called with:', { employeeId });
+    console.log('Today status request received:', { employeeId });
     
     // Validate that we have an employeeId
     if (!employeeId) {
@@ -400,10 +281,13 @@ router.get("/today/:employeeId", async (req, res) => {
     const employee = await findEmployeeByAnyId(employeeId);
     
     if (!employee) {
+      console.log('Employee not found for ID:', employeeId);
       return res.status(400).json({ 
         error: "Employee not found with provided ID: " + employeeId
       });
     }
+    
+    console.log('Found employee for today status:', employee.name, employee._id);
     
     // Get today's date
     const today = new Date();
@@ -429,6 +313,40 @@ router.get("/today/:employeeId", async (req, res) => {
     });
   } catch (error) {
     console.error('Error in GET /today/:employeeId:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get personal attendance for an employee by month/year
+router.get("/employee/:empId/:month/:year", async (req, res) => {
+  const { empId, month, year } = req.params;
+
+  try {
+    console.log('Employee attendance request received:', { empId, month, year });
+    
+    // Find employee by various ID formats
+    const employee = await findEmployeeByAnyId(empId);
+    
+    if (!employee) {
+      console.log('Employee not found for ID:', empId);
+      return res.status(400).json({ 
+        error: "Employee not found with provided ID: " + empId
+      });
+    }
+    
+    console.log('Found employee for attendance records:', employee.name, employee._id);
+
+    const records = await Attendance.find({
+      employeeId: employee._id,
+      date: {
+        $gte: new Date(year, month - 1, 1),
+        $lte: new Date(year, month, 0),
+      },
+    });
+
+    res.json(records);
+  } catch (error) {
+    console.error('Error in GET /employee/:empId/:month/:year:', error);
     res.status(500).json({ error: error.message });
   }
 });
