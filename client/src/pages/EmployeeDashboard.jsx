@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
+import io from 'socket.io-client';
 import EmployeeAttendance from "./EmployeeAttendance";
 import { 
   Clock, PlayCircle, StopCircle, Calendar, Timer, Coffee, TrendingUp, 
@@ -35,6 +36,32 @@ const EmployeeDashboard = () => {
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState('');
   const [siteName, setSiteName] = useState('');
+  const [socket, setSocket] = useState(null);
+
+  // Initialize socket connection
+  useEffect(() => {
+    console.log('Initializing socket connection for employee:', user?.name);
+    
+    // Create socket connection
+    const newSocket = io('http://localhost:5000');
+    setSocket(newSocket);
+
+    // Join as employee when connected
+    newSocket.on('connect', () => {
+      if (user?.id) {
+        newSocket.emit('join', user.id);
+        console.log('Employee joined socket room:', user.id);
+      }
+    });
+
+    // Cleanup socket connection
+    return () => {
+      if (newSocket) {
+        newSocket.close();
+        console.log('Employee socket connection closed');
+      }
+    };
+  }, [user?.id]);
 
   // Update current time every second
   useEffect(() => {

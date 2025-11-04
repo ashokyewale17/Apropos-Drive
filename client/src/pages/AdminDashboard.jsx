@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
+import io from 'socket.io-client';
 import { 
   Users, Clock, FileText, TrendingUp, AlertCircle, CheckCircle, Calendar, Timer,
   BarChart3, DollarSign, Target, Award, Activity, Settings, RefreshCw, Download,
@@ -77,6 +78,127 @@ const AdminDashboard = () => {
     theme: 'light'
   });
   const [viewMode, setViewMode] = useState('table'); // Add viewMode state - default to 'table'
+  const [socket, setSocket] = useState(null);
+
+  // Initialize socket connection for real-time updates
+  useEffect(() => {
+    console.log('Initializing socket connection for real-time updates');
+    
+    // Create socket connection
+    const newSocket = io('http://localhost:5000');
+    setSocket(newSocket);
+
+    // Join as admin
+    newSocket.emit('join', 'admin');
+
+    // Listen for employee check-in events
+    newSocket.on('employeeCheckIn', (data) => {
+      console.log('Employee checked in (real-time):', data);
+      
+      // Update employee status in real-time
+      setRealEmployees(prevEmployees => {
+        return prevEmployees.map(emp => {
+          // Match by name since that's what we get from the socket event
+          if (emp.name === data.employeeName) {
+            return {
+              ...emp,
+              status: 'active',
+              checkIn: format(new Date(data.checkInTime), 'HH:mm'),
+              location: data.location || 'Office'
+            };
+          }
+          return emp;
+        });
+      });
+      
+      setEmployeeStatus(prevEmployees => {
+        return prevEmployees.map(emp => {
+          // Match by name since that's what we get from the socket event
+          if (emp.name === data.employeeName) {
+            return {
+              ...emp,
+              status: 'active',
+              checkIn: format(new Date(data.checkInTime), 'HH:mm'),
+              location: data.location || 'Office'
+            };
+          }
+          return emp;
+        });
+      });
+      
+      // Add to recent activity
+      setRecentActivity(prev => [{
+        id: Date.now(),
+        type: 'check-in',
+        employee: data.employeeName,
+        department: data.department,
+        time: new Date(data.checkInTime),
+        status: 'success',
+        avatar: data.employeeName.split(' ').map(n => n[0]).join('')
+      }, ...prev.slice(0, 14)]);
+      
+      // Update stats
+      setStats(prev => ({
+        ...prev,
+        activeToday: prev.activeToday + 1,
+        absentToday: Math.max(0, prev.absentToday - 1),
+        attendanceRate: (((prev.activeToday + 1) / prev.totalEmployees) * 100).toFixed(1)
+      }));
+    });
+
+    // Listen for employee check-out events
+    newSocket.on('employeeCheckOut', (data) => {
+      console.log('Employee checked out (real-time):', data);
+      
+      // Update employee status in real-time
+      setRealEmployees(prevEmployees => {
+        return prevEmployees.map(emp => {
+          // Match by name since that's what we get from the socket event
+          if (emp.name === data.employeeName) {
+            return {
+              ...emp,
+              status: 'completed',
+              hours: data.hoursWorked
+            };
+          }
+          return emp;
+        });
+      });
+      
+      setEmployeeStatus(prevEmployees => {
+        return prevEmployees.map(emp => {
+          // Match by name since that's what we get from the socket event
+          if (emp.name === data.employeeName) {
+            return {
+              ...emp,
+              status: 'completed',
+              hours: data.hoursWorked
+            };
+          }
+          return emp;
+        });
+      });
+      
+      // Add to recent activity
+      setRecentActivity(prev => [{
+        id: Date.now(),
+        type: 'check-out',
+        employee: data.employeeName,
+        department: data.department,
+        time: new Date(data.checkOutTime),
+        status: 'success',
+        avatar: data.employeeName.split(' ').map(n => n[0]).join('')
+      }, ...prev.slice(0, 14)]);
+    });
+
+    // Cleanup socket connection
+    return () => {
+      if (newSocket) {
+        newSocket.close();
+        console.log('Socket connection closed');
+      }
+    };
+  }, []);
 
   useEffect(() => {
     loadDashboardData();
