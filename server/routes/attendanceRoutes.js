@@ -75,34 +75,14 @@ const findEmployeeByAnyId = async (id) => {
         return employee;
       }
       
-      // For numeric IDs beyond 7, try to find by email using a different approach
-      // Since we don't have a direct mapping, we'll try to find employees by their email
-      // In the current system, the frontend ID doesn't directly map to backend ObjectIds
-      // We need to get all employees and try to match them
-      if (/^\d+$/.test(id) && parseInt(id) > 7) {
-        // Get all employees to try to find a match
-        // This is a limitation of the mock system where frontend IDs don't match backend IDs
-        const allEmployees = await Employee.find({ isActive: true });
-        
-        // For the demo system, we'll try to find an employee whose email might match
-        // This is a workaround for the mock system
-        for (const emp of allEmployees) {
-          // If we find an employee with an ID-like email pattern that matches
-          // This is a hack for the demo system only
-          if (emp.email.includes(id) || emp._id.toString().includes(id)) {
-            return emp;
-          }
-        }
-        
-        // If no match found, return the employee at the index (demo workaround)
-        // This assumes that the numeric ID corresponds to the order of employees
-        const index = parseInt(id) - 8; // Subtract 8 because IDs 1-7 are reserved
-        if (index >= 0 && index < allEmployees.length) {
-          return allEmployees[index];
-        }
+      // For any other string ID, try to find by _id
+      // This will handle both MongoDB ObjectIds and numeric IDs for newly created employees
+      employee = await Employee.findById(id);
+      if (employee) {
+        return employee;
       }
       
-      // Last resort: try to find by _id as string
+      // Last resort: try to find by _id as string in case of stringified ObjectIds
       employee = await Employee.findOne({ _id: id });
       if (employee) {
         return employee;

@@ -85,7 +85,7 @@ const EmployeeDashboard = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          employeeId: user.email, // Send email instead of numeric ID
+          employeeId: user.id,
           location: location === 'site' ? siteName : location
         })
       });
@@ -148,7 +148,7 @@ const EmployeeDashboard = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          employeeId: user.email // Send email instead of numeric ID
+          employeeId: user.id
         })
       });
       
@@ -209,7 +209,7 @@ const EmployeeDashboard = () => {
 
   const loadTodayData = async () => {
     try {
-      const response = await fetch(`/api/attendance-records/today/${user.email}`);
+      const response = await fetch(`/api/attendance-records/today/${user.id}`);
       const data = await response.json();
       
       if (response.ok && data.isCheckedIn) {

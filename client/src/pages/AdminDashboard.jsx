@@ -870,32 +870,115 @@ const AdminDashboard = () => {
     }));
   };
 
-  const handleAddEmployee = (newEmployee) => {
-    const employee = {
-      ...newEmployee,
-      id: Math.max(...realEmployees.map(e => e.id)) + 1,
-      status: 'active',
-      checkIn: '-',
-      hours: '0:00',
-      productivity: 0,
-      joinDate: new Date().toISOString().split('T')[0]
-    };
-    const updatedEmployees = [...realEmployees, employee];
-    setRealEmployees(updatedEmployees);
-    setEmployeeStatus(updatedEmployees);
-    
-    // Save to localStorage for login authentication
+  const handleAddEmployee = async (newEmployee) => {
     try {
-      localStorage.setItem('realEmployees', JSON.stringify(updatedEmployees));
+      // Create employee in the database
+      const response = await fetch("/api/employees", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: newEmployee.name,
+          email: newEmployee.email,
+          department: newEmployee.department,
+          position: newEmployee.position || newEmployee.role,
+          phone: newEmployee.phone || '+1234567890',
+          role: newEmployee.isAdmin ? 'admin' : 'employee',
+          password: newEmployee.password || 'password123',
+          salary: newEmployee.salary || 50000,
+          address: newEmployee.address || '123 Main St, City, State'
+        }),
+      });
+
+      if (response.ok) {
+        const createdEmployee = await response.json();
+        
+        // Add to local state
+        const employee = {
+          ...newEmployee,
+          id: createdEmployee._id, // Use the actual MongoDB _id
+          status: 'active',
+          checkIn: '-',
+          hours: '0:00',
+          productivity: 0,
+          joinDate: new Date().toISOString().split('T')[0]
+        };
+        
+        const updatedEmployees = [...realEmployees, employee];
+        setRealEmployees(updatedEmployees);
+        setEmployeeStatus(updatedEmployees);
+        
+        // Save to localStorage for login authentication
+        try {
+          localStorage.setItem('realEmployees', JSON.stringify(updatedEmployees));
+        } catch (error) {
+          console.log('Failed to save employee data to localStorage:', error);
+        }
+        
+        // Update stats
+        setStats(prev => ({
+          ...prev,
+          totalEmployees: updatedEmployees.length
+        }));
+      } else {
+        console.error('Failed to create employee in database');
+        // Still add to local storage for demo purposes
+        const employee = {
+          ...newEmployee,
+          id: Math.max(...realEmployees.map(e => e.id)) + 1,
+          status: 'active',
+          checkIn: '-',
+          hours: '0:00',
+          productivity: 0,
+          joinDate: new Date().toISOString().split('T')[0]
+        };
+        const updatedEmployees = [...realEmployees, employee];
+        setRealEmployees(updatedEmployees);
+        setEmployeeStatus(updatedEmployees);
+        
+        // Save to localStorage for login authentication
+        try {
+          localStorage.setItem('realEmployees', JSON.stringify(updatedEmployees));
+        } catch (error) {
+          console.log('Failed to save employee data to localStorage:', error);
+        }
+        
+        // Update stats
+        setStats(prev => ({
+          ...prev,
+          totalEmployees: updatedEmployees.length
+        }));
+      }
     } catch (error) {
-      console.log('Failed to save employee data to localStorage:', error);
+      console.error('Error creating employee:', error);
+      // Still add to local storage for demo purposes
+      const employee = {
+        ...newEmployee,
+        id: Math.max(...realEmployees.map(e => e.id)) + 1,
+        status: 'active',
+        checkIn: '-',
+        hours: '0:00',
+        productivity: 0,
+        joinDate: new Date().toISOString().split('T')[0]
+      };
+      const updatedEmployees = [...realEmployees, employee];
+      setRealEmployees(updatedEmployees);
+      setEmployeeStatus(updatedEmployees);
+      
+      // Save to localStorage for login authentication
+      try {
+        localStorage.setItem('realEmployees', JSON.stringify(updatedEmployees));
+      } catch (error) {
+        console.log('Failed to save employee data to localStorage:', error);
+      }
+      
+      // Update stats
+      setStats(prev => ({
+        ...prev,
+        totalEmployees: updatedEmployees.length
+      }));
     }
-    
-    // Update stats
-    setStats(prev => ({
-      ...prev,
-      totalEmployees: updatedEmployees.length
-    }));
   };
 
   const handleStatusCardClick = (statusType) => {
