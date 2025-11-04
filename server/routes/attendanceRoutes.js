@@ -53,9 +53,9 @@ router.get("/employee/:empId/:month/:year", async (req, res) => {
         // If it's a valid ObjectId string, try direct lookup
         employee = await Employee.findById(processedEmpId);
       } else if (/^\d+$/.test(processedEmpId)) {
-        // If it's a numeric string, try to find by position
+        // If it's a numeric string, try to find by position (1-based index)
         const numericId = parseInt(processedEmpId);
-        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 }).limit(numericId);
+        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 });
         if (employees.length >= numericId) {
           employee = employees[numericId - 1];
         }
@@ -113,9 +113,9 @@ router.post("/checkin", async (req, res) => {
         // If it's a valid ObjectId string, try direct lookup
         employee = await Employee.findById(processedEmpId);
       } else if (/^\d+$/.test(processedEmpId)) {
-        // If it's a numeric string, try to find by position
+        // If it's a numeric string, try to find by position (1-based index)
         const numericId = parseInt(processedEmpId);
-        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 }).limit(numericId);
+        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 });
         if (employees.length >= numericId) {
           employee = employees[numericId - 1];
         }
@@ -131,6 +131,13 @@ router.post("/checkin", async (req, res) => {
       }
       
       processedEmpId = employee._id;
+    }
+    
+    // Additional validation to ensure we have a valid ObjectId
+    if (!processedEmpId || !mongoose.Types.ObjectId.isValid(processedEmpId)) {
+      return res.status(400).json({ 
+        error: "Invalid employee ID format after processing: " + employeeId
+      });
     }
     
     // Get today's date
@@ -215,9 +222,9 @@ router.post("/checkout", async (req, res) => {
         // If it's a valid ObjectId string, try direct lookup
         employee = await Employee.findById(processedEmpId);
       } else if (/^\d+$/.test(processedEmpId)) {
-        // If it's a numeric string, try to find by position
+        // If it's a numeric string, try to find by position (1-based index)
         const numericId = parseInt(processedEmpId);
-        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 }).limit(numericId);
+        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 });
         if (employees.length >= numericId) {
           employee = employees[numericId - 1];
         }
@@ -233,6 +240,13 @@ router.post("/checkout", async (req, res) => {
       }
       
       processedEmpId = employee._id;
+    }
+    
+    // Additional validation to ensure we have a valid ObjectId
+    if (!processedEmpId || !mongoose.Types.ObjectId.isValid(processedEmpId)) {
+      return res.status(400).json({ 
+        error: "Invalid employee ID format after processing: " + employeeId
+      });
     }
     
     // Get today's date
@@ -325,9 +339,9 @@ router.get("/today/:employeeId", async (req, res) => {
         // If it's a valid ObjectId string, try direct lookup
         employee = await Employee.findById(processedEmpId);
       } else if (/^\d+$/.test(processedEmpId)) {
-        // If it's a numeric string, try to find by position
+        // If it's a numeric string, try to find by position (1-based index)
         const numericId = parseInt(processedEmpId);
-        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 }).limit(numericId);
+        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 });
         if (employees.length >= numericId) {
           employee = employees[numericId - 1];
         }
@@ -343,6 +357,13 @@ router.get("/today/:employeeId", async (req, res) => {
       }
       
       processedEmpId = employee._id;
+    }
+    
+    // Additional validation to ensure we have a valid ObjectId
+    if (!processedEmpId || !mongoose.Types.ObjectId.isValid(processedEmpId)) {
+      return res.status(400).json({ 
+        error: "Invalid employee ID format after processing: " + employeeId
+      });
     }
     
     // Get today's date
