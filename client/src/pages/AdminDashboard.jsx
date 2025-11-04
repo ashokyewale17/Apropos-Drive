@@ -144,6 +144,11 @@ const AdminDashboard = () => {
         absentToday: Math.max(0, prev.absentToday - 1),
         attendanceRate: (((prev.activeToday + 1) / prev.totalEmployees) * 100).toFixed(1)
       }));
+      
+      // Refresh attendance data for the current month to reflect the check-in
+      if (realEmployees.length > 0) {
+        fetchRealMonthlyAttendance(realEmployees);
+      }
     });
 
     // Listen for employee check-out events
@@ -189,6 +194,11 @@ const AdminDashboard = () => {
         status: 'success',
         avatar: data.employeeName.split(' ').map(n => n[0]).join('')
       }, ...prev.slice(0, 14)]);
+      
+      // Refresh attendance data for the current month to reflect the check-out
+      if (realEmployees.length > 0) {
+        fetchRealMonthlyAttendance(realEmployees);
+      }
     });
 
     // Cleanup socket connection
@@ -198,7 +208,7 @@ const AdminDashboard = () => {
         console.log('Socket connection closed');
       }
     };
-  }, []);
+  }, []); // Empty dependency array to prevent re-running on realEmployees changes
 
   useEffect(() => {
     loadDashboardData();
@@ -264,7 +274,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (realEmployees.length > 0) {
-      generateMonthlyAttendance(realEmployees);
+      fetchRealMonthlyAttendance(realEmployees);
     }
   }, [realEmployees, selectedMonth, selectedYear]);
 
@@ -569,6 +579,172 @@ const AdminDashboard = () => {
   };
 
   const generateMonthlyAttendance = (employees) => {
+    // This function will now fetch real data from the backend
+    fetchRealMonthlyAttendance(employees);
+  };
+
+  // New function to fetch real attendance data from backend
+  const fetchRealMonthlyAttendance = async (employees) => {
+    try {
+      console.log('Fetching real attendance data for employees:', employees.length);
+      
+      // Fetch attendance data for all employees for the selected month/year
+      const attendancePromises = employees.map(async (employee) => {
+        try {
+          const response = await fetch(`/api/attendance-records/employee/${employee.id}/${selectedMonth + 1}/${selectedYear}`);
+          if (response.ok) {
+            const records = await response.json();
+            console.log(`Attendance records for ${employee.name}:`, records);
+            return { employee, records };
+          } else {
+            console.error(`Failed to fetch attendance for ${employee.name}:`, response.status);
+            return { employee, records: [] };
+          }
+        } catch (error) {
+          console.error(`Error fetching attendance for ${employee.name}:`, error);
+          return { employee, records: [] };
+        }
+      });
+      
+      const attendanceResults = await Promise.all(attendancePromises);
+      
+      // Process the attendance data to match the expected format
+      const monthlyData = attendanceResults.map(({ employee, records }) => {
+        const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+        const attendanceRecords = [];
+        let presentDays = 0;
+        let totalHours = 0;
+        let leaveDays = 0;
+        
+        // Create a map of attendance records by date for easy lookup
+        const recordMap = {};
+        records.forEach(record => {
+          if (record.date) {
+            const date = new Date(record.date);
+            const day = date.getDate();
+            recordMap[day] = record;
+          }
+        });
+        
+        // Generate attendance records for each day of the month
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(selectedYear, selectedMonth, day);
+          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+          
+          if (!isWeekend && date <= new Date()) {
+            const record = recordMap[day];
+            
+            if (record) {
+              // Employee has a record for this day
+              let status = 'present';
+              let inTime = '';
+              let outTime = '';
+              let hoursWorked = 0;
+              
+              if (record.inTime) {
+                const inDate = new Date(record.inTime);
+                inTime = `${inDate.getHours().toString().padStart(2, '0')}:${inDate.getMinutes().toString().padStart(2, '0')}`;
+                
+                if (record.outTime) {
+                  const outDate = new Date(record.outTime);
+                  outTime = `${outDate.getHours().toString().padStart(2, '0')}:${outDate.getMinutes().toString().padStart(2, '0')}`;
+                  
+                  // Calculate hours worked
+                  const diffMs = outDate - inDate;
+                  hoursWorked = diffMs / (1000 * 60 * 60);
+                  totalHours += hoursWorked;
+                  presentDays++;
+                  
+                  // Check if late (after 9 AM)
+                  if (inDate.getHours() > 9 || (inDate.getHours() === 9 && inDate.getMinutes() > 0)) {
+                    status = 'late';
+                  }
+                } else {
+                  // Checked in but not out yet
+                  status = 'active';
+                  presentDays++;
+                }
+              }
+              
+              attendanceRecords.push({
+                date: day,
+                status,
+                inTime,
+                outTime,
+                hoursWorked: hoursWorked.toFixed(1)
+              });
+            } else {
+              // No record for this day - could be absent or future date
+              if (date <= new Date()) {
+                // Past date with no record - absent
+                attendanceRecords.push({
+                  date: day,
+                  status: 'absent',
+                  inTime: '',
+                  outTime: '',
+                  hoursWorked: '0'
+                });
+              } else {
+                // Future date
+                attendanceRecords.push({
+                  date: day,
+                  status: 'future',
+                  inTime: '',
+                  outTime: '',
+                  hoursWorked: '0'
+                });
+              }
+            }
+          } else if (isWeekend) {
+            attendanceRecords.push({
+              date: day,
+              status: 'weekend',
+              inTime: '',
+              outTime: '',
+              hoursWorked: '0'
+            });
+          } else {
+            // Future date
+            attendanceRecords.push({
+              date: day,
+              status: 'future',
+              inTime: '',
+              outTime: '',
+              hoursWorked: '0'
+            });
+          }
+        }
+        
+        // Calculate summary statistics
+        const avgHoursDecimal = presentDays > 0 ? (totalHours / presentDays) : 0;
+        const avgHours = presentDays > 0 ? (totalHours / presentDays).toFixed(1) : '0.0';
+        const workingDays = daysInMonth - 8; // Roughly excluding weekends
+        const attendanceRate = workingDays > 0 ? ((presentDays / workingDays) * 100).toFixed(1) : '0.0';
+        
+        return {
+          employee,
+          attendanceRecords,
+          summary: {
+            presentDays,
+            leaveDays,
+            totalHours: totalHours.toFixed(1),
+            avgHours,
+            attendanceRate
+          }
+        };
+      });
+      
+      setMonthlyAttendance(monthlyData);
+      console.log('Updated monthly attendance data:', monthlyData);
+    } catch (error) {
+      console.error('Error fetching real attendance data:', error);
+      // Fallback to mock data if real data fetch fails
+      generateMockMonthlyAttendance(employees);
+    }
+  };
+
+  // Fallback function to generate mock data (existing implementation)
+  const generateMockMonthlyAttendance = (employees) => {
     const monthlyData = employees.map(employee => {
       const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
       const attendanceRecords = [];
@@ -656,13 +832,13 @@ const AdminDashboard = () => {
     setMonthlyAttendance(monthlyData);
   };
 
-
-
   const handleMonthChange = (month, year) => {
     setSelectedMonth(month);
     setSelectedYear(year);
-    // Regenerate attendance data for new month
-    generateMonthlyAttendance(realEmployees);
+    // Fetch real attendance data for new month instead of generating mock data
+    if (realEmployees.length > 0) {
+      fetchRealMonthlyAttendance(realEmployees);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -3019,6 +3195,26 @@ const AdminDashboard = () => {
                       Calendar
                     </button>
                   </div>
+                  <button 
+                    onClick={() => {
+                      if (realEmployees.length > 0) {
+                        fetchRealMonthlyAttendance(realEmployees);
+                      }
+                    }}
+                    className="btn btn-sm"
+                    style={{ 
+                      background: 'rgba(255,255,255,0.2)', 
+                      color: 'white',
+                      border: '1px solid rgba(255,255,255,0.3)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      padding: '0.25rem 0.5rem'
+                    }}
+                  >
+                    <RefreshCw size={14} />
+                    Refresh
+                  </button>
                   <select 
                     value={`${selectedYear}-${selectedMonth}`}
                     onChange={(e) => {
