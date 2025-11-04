@@ -4,7 +4,7 @@ const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
 const mongoose = require("mongoose");
 
-// Helper function to find employee by various ID formats
+// Helper function to find employee by various ID formats including mock IDs
 const findEmployeeByAnyId = async (id) => {
   try {
     // Handle null/undefined
@@ -51,16 +51,34 @@ const findEmployeeByAnyId = async (id) => {
         return employee;
       }
       
-      // Try to find by position (for numeric IDs like "5")
+      // SPECIAL CASE FOR MOCK SYSTEM:
+      // In the mock system, frontend uses simple numeric IDs (1, 2, 3, 4, 5, etc.)
+      // We need to find the employee by position in the database
       if (/^\d+$/.test(id)) {
         const numericId = parseInt(id);
-        console.log('Looking for employee by position:', numericId);
-        // Get all active employees sorted by creation date
-        const employees = await Employee.find({ isActive: true }).sort({ createdAt: 1 });
+        console.log('Looking for employee by position (mock system):', numericId);
+        
+        // Get all active employees sorted by _id to maintain consistent order
+        // This should match the order in which employees were created in the mock system
+        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 });
         console.log('Found', employees.length, 'active employees');
-        if (employees.length >= numericId) {
-          console.log('Returning employee at position', numericId - 1);
+        
+        // In the mock system:
+        // ID 1 = first employee in sorted list
+        // ID 2 = second employee in sorted list
+        // etc.
+        // Arrays are 0-indexed, so ID 1 = index 0, ID 2 = index 1, etc.
+        if (employees.length >= numericId && numericId > 0) {
+          console.log('Returning employee at index', numericId - 1);
           return employees[numericId - 1];
+        }
+        
+        // Alternative approach: Try sorting by creation date
+        console.log('Trying alternative sort by creation date');
+        const employeesByDate = await Employee.find({ isActive: true }).sort({ createdAt: 1 });
+        if (employeesByDate.length >= numericId && numericId > 0) {
+          console.log('Returning employee at index', numericId - 1, 'from date-sorted list');
+          return employeesByDate[numericId - 1];
         }
       }
     }
