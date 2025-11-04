@@ -4,34 +4,64 @@ const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
 const mongoose = require("mongoose");
 
-// Enhanced helper function to process employeeId
-const processEmployeeId = (id) => {
+// Enhanced helper function to find employee by various ID formats
+const findEmployeeById = async (id) => {
   try {
     // Handle null/undefined
     if (!id) {
       throw new Error('Employee ID is required');
     }
     
-    // If it's already an ObjectId, return as is
+    // If it's already an ObjectId, try direct lookup
     if (id instanceof mongoose.Types.ObjectId) {
-      return id;
+      return await Employee.findById(id);
     }
     
-    // If it's a string that looks like an ObjectId, convert it
+    // If it's a string that looks like an ObjectId, try direct lookup
     if (typeof id === 'string' && mongoose.Types.ObjectId.isValid(id)) {
       try {
-        return new mongoose.Types.ObjectId(id);
+        return await Employee.findById(new mongoose.Types.ObjectId(id));
       } catch (e) {
-        // If conversion fails, return the original string
-        return id;
+        // If conversion fails, continue with other strategies
+        console.warn('ObjectId conversion failed, trying alternative lookup methods:', id);
       }
     }
     
-    // For any other case, return as is
-    return id;
+    // For numeric strings or other formats, use $or query
+    if (typeof id === 'string') {
+      // Try to find by email first
+      let employee = await Employee.findOne({ email: id });
+      if (employee) {
+        return employee;
+      }
+      
+      // Try to find by _id using string representation
+      employee = await Employee.findOne({ 
+        $or: [
+          { _id: id },  // Direct string match
+          { _id: new mongoose.Types.ObjectId(id) }  // ObjectId conversion
+        ]
+      }).catch(() => null);
+      
+      if (employee) {
+        return employee;
+      }
+      
+      // Try to find by position (for numeric IDs like "5")
+      if (/^\d+$/.test(id)) {
+        const numericId = parseInt(id);
+        const employees = await Employee.find({ isActive: true }).sort({ createdAt: 1 });
+        if (employees.length >= numericId) {
+          return employees[numericId - 1];
+        }
+      }
+    }
+    
+    // If nothing found, return null
+    return null;
   } catch (error) {
-    console.warn('Error processing employeeId, using original:', id, error.message);
-    return id;
+    console.error('Error finding employee by ID:', id, error.message);
+    return null;
   }
 };
 
@@ -40,41 +70,17 @@ router.get("/employee/:empId/:month/:year", async (req, res) => {
   const { empId, month, year } = req.params;
 
   try {
-    // Process employeeId
-    let processedEmpId = processEmployeeId(empId);
-    console.log('GET /employee - Processing employeeId:', { original: empId, processed: processedEmpId });
-
-    // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
-    if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
-      let employee = null;
-      
-      // Try different lookup strategies
-      if (mongoose.Types.ObjectId.isValid(processedEmpId)) {
-        // If it's a valid ObjectId string, try direct lookup
-        employee = await Employee.findById(processedEmpId);
-      } else if (/^\d+$/.test(processedEmpId)) {
-        // If it's a numeric string, try to find by position (1-based index)
-        const numericId = parseInt(processedEmpId);
-        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 });
-        if (employees.length >= numericId) {
-          employee = employees[numericId - 1];
-        }
-      } else {
-        // For other values, try email lookup
-        employee = await Employee.findOne({ email: processedEmpId });
-      }
-      
-      if (!employee) {
-        return res.status(400).json({ 
-          error: "Employee not found with provided ID: " + empId
-        });
-      }
-      
-      processedEmpId = employee._id;
+    // Find employee by various ID formats
+    const employee = await findEmployeeById(empId);
+    
+    if (!employee) {
+      return res.status(400).json({ 
+        error: "Employee not found with provided ID: " + empId
+      });
     }
 
     const records = await Attendance.find({
-      employeeId: processedEmpId,
+      employeeId: employee._id,
       date: {
         $gte: new Date(year, month - 1, 1),
         $lte: new Date(year, month, 0),
@@ -93,50 +99,19 @@ router.post("/checkin", async (req, res) => {
   try {
     const { employeeId, location } = req.body;
     
-    // Process employeeId
-    let processedEmpId = processEmployeeId(employeeId);
-    console.log('POST /checkin - Processing employeeId:', { original: employeeId, processed: processedEmpId });
-    
     // Validate that we have an employeeId
-    if (!processedEmpId) {
+    if (!employeeId) {
       return res.status(400).json({ 
         error: "Employee ID is required" 
       });
     }
     
-    // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
-    if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
-      let employee = null;
-      
-      // Try different lookup strategies
-      if (mongoose.Types.ObjectId.isValid(processedEmpId)) {
-        // If it's a valid ObjectId string, try direct lookup
-        employee = await Employee.findById(processedEmpId);
-      } else if (/^\d+$/.test(processedEmpId)) {
-        // If it's a numeric string, try to find by position (1-based index)
-        const numericId = parseInt(processedEmpId);
-        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 });
-        if (employees.length >= numericId) {
-          employee = employees[numericId - 1];
-        }
-      } else {
-        // For other values, try email lookup
-        employee = await Employee.findOne({ email: processedEmpId });
-      }
-      
-      if (!employee) {
-        return res.status(400).json({ 
-          error: "Employee not found with provided ID: " + employeeId
-        });
-      }
-      
-      processedEmpId = employee._id;
-    }
+    // Find employee by various ID formats
+    const employee = await findEmployeeById(employeeId);
     
-    // Additional validation to ensure we have a valid ObjectId
-    if (!processedEmpId || !mongoose.Types.ObjectId.isValid(processedEmpId)) {
+    if (!employee) {
       return res.status(400).json({ 
-        error: "Invalid employee ID format after processing: " + employeeId
+        error: "Employee not found with provided ID: " + employeeId
       });
     }
     
@@ -146,7 +121,7 @@ router.post("/checkin", async (req, res) => {
     
     // Check if employee already has a check-in for today
     let attendanceRecord = await Attendance.findOne({
-      employeeId: processedEmpId,
+      employeeId: employee._id,
       date: today
     });
     
@@ -158,9 +133,9 @@ router.post("/checkin", async (req, res) => {
       });
     }
     
-    // Create new attendance record
+    // Create new attendance record with proper ObjectId
     attendanceRecord = new Attendance({
-      employeeId: processedEmpId,
+      employeeId: employee._id,
       date: today,
       inTime: new Date(),
       status: "Present"
@@ -202,50 +177,19 @@ router.post("/checkout", async (req, res) => {
   try {
     const { employeeId } = req.body;
     
-    // Process employeeId
-    let processedEmpId = processEmployeeId(employeeId);
-    console.log('POST /checkout - Processing employeeId:', { original: employeeId, processed: processedEmpId });
-    
     // Validate that we have an employeeId
-    if (!processedEmpId) {
+    if (!employeeId) {
       return res.status(400).json({ 
         error: "Employee ID is required" 
       });
     }
     
-    // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
-    if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
-      let employee = null;
-      
-      // Try different lookup strategies
-      if (mongoose.Types.ObjectId.isValid(processedEmpId)) {
-        // If it's a valid ObjectId string, try direct lookup
-        employee = await Employee.findById(processedEmpId);
-      } else if (/^\d+$/.test(processedEmpId)) {
-        // If it's a numeric string, try to find by position (1-based index)
-        const numericId = parseInt(processedEmpId);
-        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 });
-        if (employees.length >= numericId) {
-          employee = employees[numericId - 1];
-        }
-      } else {
-        // For other values, try email lookup
-        employee = await Employee.findOne({ email: processedEmpId });
-      }
-      
-      if (!employee) {
-        return res.status(400).json({ 
-          error: "Employee not found with provided ID: " + employeeId
-        });
-      }
-      
-      processedEmpId = employee._id;
-    }
+    // Find employee by various ID formats
+    const employee = await findEmployeeById(employeeId);
     
-    // Additional validation to ensure we have a valid ObjectId
-    if (!processedEmpId || !mongoose.Types.ObjectId.isValid(processedEmpId)) {
+    if (!employee) {
       return res.status(400).json({ 
-        error: "Invalid employee ID format after processing: " + employeeId
+        error: "Employee not found with provided ID: " + employeeId
       });
     }
     
@@ -255,7 +199,7 @@ router.post("/checkout", async (req, res) => {
     
     // Find today's attendance record
     let attendanceRecord = await Attendance.findOne({
-      employeeId: processedEmpId,
+      employeeId: employee._id,
       date: today
     });
     
@@ -319,50 +263,19 @@ router.get("/today/:employeeId", async (req, res) => {
   try {
     const { employeeId } = req.params;
     
-    // Process employeeId
-    let processedEmpId = processEmployeeId(employeeId);
-    console.log('GET /today - Processing employeeId:', { original: employeeId, processed: processedEmpId });
-    
     // Validate that we have an employeeId
-    if (!processedEmpId) {
+    if (!employeeId) {
       return res.status(400).json({ 
         error: "Employee ID is required" 
       });
     }
     
-    // If employeeId is not an ObjectId, try to find the employee and get the real ObjectId
-    if (!(processedEmpId instanceof mongoose.Types.ObjectId)) {
-      let employee = null;
-      
-      // Try different lookup strategies
-      if (mongoose.Types.ObjectId.isValid(processedEmpId)) {
-        // If it's a valid ObjectId string, try direct lookup
-        employee = await Employee.findById(processedEmpId);
-      } else if (/^\d+$/.test(processedEmpId)) {
-        // If it's a numeric string, try to find by position (1-based index)
-        const numericId = parseInt(processedEmpId);
-        const employees = await Employee.find({ isActive: true }).sort({ _id: 1 });
-        if (employees.length >= numericId) {
-          employee = employees[numericId - 1];
-        }
-      } else {
-        // For other values, try email lookup
-        employee = await Employee.findOne({ email: processedEmpId });
-      }
-      
-      if (!employee) {
-        return res.status(400).json({ 
-          error: "Employee not found with provided ID: " + employeeId
-        });
-      }
-      
-      processedEmpId = employee._id;
-    }
+    // Find employee by various ID formats
+    const employee = await findEmployeeById(employeeId);
     
-    // Additional validation to ensure we have a valid ObjectId
-    if (!processedEmpId || !mongoose.Types.ObjectId.isValid(processedEmpId)) {
+    if (!employee) {
       return res.status(400).json({ 
-        error: "Invalid employee ID format after processing: " + employeeId
+        error: "Employee not found with provided ID: " + employeeId
       });
     }
     
@@ -372,7 +285,7 @@ router.get("/today/:employeeId", async (req, res) => {
     
     // Find today's attendance record
     const attendanceRecord = await Attendance.findOne({
-      employeeId: processedEmpId,
+      employeeId: employee._id,
       date: today
     }).populate('employeeId', 'name department');
     
