@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Employee = require('../models/Employee');
+const mongoose = require('mongoose');
 const { authenticateToken, requireAdmin, requireAdminOrSelf } = require('../middleware/auth');
 
 // @route   GET /api/employees

@@ -4,60 +4,69 @@ const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
 const mongoose = require("mongoose");
 
-// Enhanced helper function to find employee by various ID formats
-const findEmployeeById = async (id) => {
+// Helper function to find employee by various ID formats
+const findEmployeeByAnyId = async (id) => {
   try {
     // Handle null/undefined
     if (!id) {
       throw new Error('Employee ID is required');
     }
     
+    console.log('Finding employee with ID:', id, 'Type:', typeof id);
+    
     // If it's already an ObjectId, try direct lookup
     if (id instanceof mongoose.Types.ObjectId) {
+      console.log('ID is already an ObjectId');
       return await Employee.findById(id);
     }
     
-    // If it's a string that looks like an ObjectId, try direct lookup
-    if (typeof id === 'string' && mongoose.Types.ObjectId.isValid(id)) {
-      try {
-        return await Employee.findById(new mongoose.Types.ObjectId(id));
-      } catch (e) {
-        // If conversion fails, continue with other strategies
-        console.warn('ObjectId conversion failed, trying alternative lookup methods:', id);
-      }
-    }
-    
-    // For numeric strings or other formats, use $or query
+    // If it's a string
     if (typeof id === 'string') {
+      console.log('ID is a string, trying different lookup methods');
+      
       // Try to find by email first
       let employee = await Employee.findOne({ email: id });
       if (employee) {
+        console.log('Found employee by email');
         return employee;
       }
       
-      // Try to find by _id using string representation
-      employee = await Employee.findOne({ 
-        $or: [
-          { _id: id },  // Direct string match
-          { _id: new mongoose.Types.ObjectId(id) }  // ObjectId conversion
-        ]
-      }).catch(() => null);
+      // Try to find by _id if it's a valid ObjectId string
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        try {
+          employee = await Employee.findById(new mongoose.Types.ObjectId(id));
+          if (employee) {
+            console.log('Found employee by ObjectId string');
+            return employee;
+          }
+        } catch (e) {
+          console.log('ObjectId conversion failed:', e.message);
+        }
+      }
       
+      // Try to find by string representation of _id
+      employee = await Employee.findOne({ _id: id });
       if (employee) {
+        console.log('Found employee by string _id');
         return employee;
       }
       
       // Try to find by position (for numeric IDs like "5")
       if (/^\d+$/.test(id)) {
         const numericId = parseInt(id);
+        console.log('Looking for employee by position:', numericId);
+        // Get all active employees sorted by creation date
         const employees = await Employee.find({ isActive: true }).sort({ createdAt: 1 });
+        console.log('Found', employees.length, 'active employees');
         if (employees.length >= numericId) {
+          console.log('Returning employee at position', numericId - 1);
           return employees[numericId - 1];
         }
       }
     }
     
     // If nothing found, return null
+    console.log('No employee found with ID:', id);
     return null;
   } catch (error) {
     console.error('Error finding employee by ID:', id, error.message);
@@ -70,8 +79,10 @@ router.get("/employee/:empId/:month/:year", async (req, res) => {
   const { empId, month, year } = req.params;
 
   try {
+    console.log('GET /employee called with:', { empId, month, year });
+    
     // Find employee by various ID formats
-    const employee = await findEmployeeById(empId);
+    const employee = await findEmployeeByAnyId(empId);
     
     if (!employee) {
       return res.status(400).json({ 
@@ -99,6 +110,8 @@ router.post("/checkin", async (req, res) => {
   try {
     const { employeeId, location } = req.body;
     
+    console.log('POST /checkin called with:', { employeeId, location });
+    
     // Validate that we have an employeeId
     if (!employeeId) {
       return res.status(400).json({ 
@@ -107,13 +120,15 @@ router.post("/checkin", async (req, res) => {
     }
     
     // Find employee by various ID formats
-    const employee = await findEmployeeById(employeeId);
+    const employee = await findEmployeeByAnyId(employeeId);
     
     if (!employee) {
       return res.status(400).json({ 
         error: "Employee not found with provided ID: " + employeeId
       });
     }
+    
+    console.log('Found employee:', employee.name, employee._id);
     
     // Get today's date
     const today = new Date();
@@ -135,11 +150,13 @@ router.post("/checkin", async (req, res) => {
     
     // Create new attendance record with proper ObjectId
     attendanceRecord = new Attendance({
-      employeeId: employee._id,
+      employeeId: employee._id, // This is now guaranteed to be a proper ObjectId
       date: today,
       inTime: new Date(),
       status: "Present"
     });
+    
+    console.log('Creating attendance record with employeeId:', employee._id);
     
     await attendanceRecord.save();
     
@@ -177,6 +194,8 @@ router.post("/checkout", async (req, res) => {
   try {
     const { employeeId } = req.body;
     
+    console.log('POST /checkout called with:', { employeeId });
+    
     // Validate that we have an employeeId
     if (!employeeId) {
       return res.status(400).json({ 
@@ -185,7 +204,7 @@ router.post("/checkout", async (req, res) => {
     }
     
     // Find employee by various ID formats
-    const employee = await findEmployeeById(employeeId);
+    const employee = await findEmployeeByAnyId(employeeId);
     
     if (!employee) {
       return res.status(400).json({ 
@@ -263,6 +282,8 @@ router.get("/today/:employeeId", async (req, res) => {
   try {
     const { employeeId } = req.params;
     
+    console.log('GET /today called with:', { employeeId });
+    
     // Validate that we have an employeeId
     if (!employeeId) {
       return res.status(400).json({ 
@@ -271,7 +292,7 @@ router.get("/today/:employeeId", async (req, res) => {
     }
     
     // Find employee by various ID formats
-    const employee = await findEmployeeById(employeeId);
+    const employee = await findEmployeeByAnyId(employeeId);
     
     if (!employee) {
       return res.status(400).json({ 
