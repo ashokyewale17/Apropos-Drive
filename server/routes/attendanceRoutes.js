@@ -4,15 +4,103 @@ const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
 const mongoose = require("mongoose");
 
-// Mock employee data mapping to match the frontend mock data
-const mockEmployeeMap = {
-  "1": "tushar.mhaskar@company.com",
-  "2": "vijay.solanki@company.com",
-  "3": "pinky.chakrabarty@company.com",
-  "4": "sanket.pawal@company.com",
-  "5": "ashok.yewale@company.com",
-  "6": "harshal.lohar@company.com",
-  "7": "prasanna.pandit@company.com"
+// Mock employee data to create if they don't exist
+const mockEmployees = [
+  {
+    name: 'Tushar Mhaskar',
+    email: 'tushar.mhaskar@company.com',
+    password: 'admin123',
+    department: 'Admin',
+    position: 'Admin & HR',
+    role: 'admin',
+    salary: 80000,
+    phone: '+1234567891',
+    address: '123 Admin St, City, State'
+  },
+  {
+    name: 'Vijay Solanki',
+    email: 'vijay.solanki@company.com',
+    password: 'test123',
+    department: 'Testing',
+    position: 'QA Engineer',
+    role: 'employee',
+    salary: 60000,
+    phone: '+1234567892',
+    address: '124 Test St, City, State'
+  },
+  {
+    name: 'Pinky Chakrabarty',
+    email: 'pinky.chakrabarty@company.com',
+    password: 'ops123',
+    department: 'Operations',
+    position: 'Operations Manager',
+    role: 'employee',
+    salary: 65000,
+    phone: '+1234567893',
+    address: '125 Ops St, City, State'
+  },
+  {
+    name: 'Sanket Pawal',
+    email: 'sanket.pawal@company.com',
+    password: 'design123',
+    department: 'Design',
+    position: 'UI/UX Designer',
+    role: 'employee',
+    salary: 70000,
+    phone: '+1234567894',
+    address: '126 Design St, City, State'
+  },
+  {
+    name: 'Ashok Yewale',
+    email: 'ashok.yewale@company.com',
+    password: 'soft123',
+    department: 'Software',
+    position: 'Software Developer',
+    role: 'employee',
+    salary: 75000,
+    phone: '+1234567895',
+    address: '127 Software St, City, State'
+  },
+  {
+    name: 'Harshal Lohar',
+    email: 'harshal.lohar@company.com',
+    password: 'soft123',
+    department: 'Software',
+    position: 'Senior Developer',
+    role: 'employee',
+    salary: 85000,
+    phone: '+1234567896',
+    address: '128 Senior St, City, State'
+  },
+  {
+    name: 'Prasanna Pandit',
+    email: 'prasanna.pandit@company.com',
+    password: 'embed123',
+    department: 'Embedded',
+    position: 'Embedded Engineer',
+    role: 'employee',
+    salary: 80000,
+    phone: '+1234567897',
+    address: '129 Embedded St, City, State'
+  }
+];
+
+// Helper function to ensure mock employees exist in database
+const ensureMockEmployeesExist = async () => {
+  try {
+    for (const mockEmployee of mockEmployees) {
+      // Check if employee already exists
+      const existingEmployee = await Employee.findOne({ email: mockEmployee.email });
+      if (!existingEmployee) {
+        // Create the employee
+        const employee = new Employee(mockEmployee);
+        await employee.save();
+        console.log('Created mock employee:', mockEmployee.name);
+      }
+    }
+  } catch (error) {
+    console.error('Error ensuring mock employees exist:', error.message);
+  }
 };
 
 // Helper function to find employee by various ID formats including mock IDs
@@ -24,6 +112,9 @@ const findEmployeeByAnyId = async (id) => {
     }
     
     console.log('Finding employee with ID:', id, 'Type:', typeof id);
+    
+    // First ensure mock employees exist
+    await ensureMockEmployeesExist();
     
     // If it's already an ObjectId, try direct lookup
     if (id instanceof mongoose.Types.ObjectId) {
@@ -40,17 +131,6 @@ const findEmployeeByAnyId = async (id) => {
       if (employee) {
         console.log('Found employee by email');
         return employee;
-      }
-      
-      // SPECIAL CASE FOR MOCK SYSTEM:
-      // If the ID is a mock numeric ID, map it to the corresponding email
-      if (mockEmployeeMap[id]) {
-        console.log('Found mock ID, mapping to email:', mockEmployeeMap[id]);
-        employee = await Employee.findOne({ email: mockEmployeeMap[id] });
-        if (employee) {
-          console.log('Found employee by mapped email');
-          return employee;
-        }
       }
       
       // Try to find by _id if it's a valid ObjectId string
@@ -73,16 +153,17 @@ const findEmployeeByAnyId = async (id) => {
         return employee;
       }
       
-      // Alternative approach for numeric IDs - try to find by position
-      if (/^\d+$/.test(id)) {
+      // SPECIAL CASE FOR MOCK SYSTEM:
+      // If the ID is a mock numeric ID (1-7), find by position
+      if (/^\d+$/.test(id) && parseInt(id) >= 1 && parseInt(id) <= 7) {
         const numericId = parseInt(id);
-        console.log('Looking for employee by position:', numericId);
+        console.log('Looking for mock employee by position:', numericId);
         
-        // Get all active employees sorted by creation date
+        // Get employees sorted by creation date to maintain consistent order
         const employees = await Employee.find({ isActive: true }).sort({ createdAt: 1 });
         console.log('Found', employees.length, 'active employees');
         
-        if (employees.length >= numericId && numericId > 0) {
+        if (employees.length >= numericId) {
           console.log('Returning employee at position', numericId - 1);
           return employees[numericId - 1];
         }
