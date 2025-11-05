@@ -80,20 +80,34 @@ const AdminDashboard = () => {
   const [viewMode, setViewMode] = useState('table'); // Add viewMode state - default to 'table'
 
   useEffect(() => {
-    loadDashboardData();
-    generateAnalyticsData();
+    // Load dashboard data asynchronously
+    const loadData = async () => {
+      await loadDashboardData();
+      generateAnalyticsData();
+    };
+    
+    loadData();
     
     // Set up socket connection for real-time updates
     const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000');
     
+    console.log('Attempting to connect to socket server...');
+    
+    socket.on('connect', () => {
+      console.log('Socket connected successfully with ID:', socket.id);
+    });
+    
     // Listen for employee check-in events
     socket.on('employeeCheckIn', (data) => {
       console.log('Employee checked in (real-time):', data);
+      console.log('Current employees in state:', realEmployees);
+      
       // Update the employee status in real-time
-      setRealEmployees(prevEmployees => 
-        prevEmployees.map(emp => {
-          // Match by database ID first, then by name as fallback
-          if (emp.id == data.employeeId || emp._id == data.employeeId || emp.name === data.employeeName || emp.email === data.employeeName) {
+      setRealEmployees(prevEmployees => {
+        const updatedEmployees = prevEmployees.map(emp => {
+          // Match by MongoDB ObjectId - this is the key fix
+          if (emp._id === data.employeeId || emp.id === data.employeeId) {
+            console.log('Updating employee status for:', emp.name);
             return { 
               ...emp, 
               status: 'active', 
@@ -102,42 +116,58 @@ const AdminDashboard = () => {
             };
           }
           return emp;
-        })
-      );
+        });
+        console.log('Updated employees:', updatedEmployees);
+        return updatedEmployees;
+      });
       
       // Update stats
       setStats(prevStats => ({
         ...prevStats,
         activeToday: prevStats.activeToday + 1,
-        attendanceRate: (((prevStats.activeToday + 1) / prevStats.totalEmployees) * 100).toFixed(1)
+        attendanceRate: prevStats.totalEmployees > 0 ? 
+          (((prevStats.activeToday + 1) / prevStats.totalEmployees) * 100).toFixed(1) : '0.0'
       }));
     });
     
     // Listen for employee check-out events
     socket.on('employeeCheckOut', (data) => {
       console.log('Employee checked out (real-time):', data);
+      console.log('Current employees in state:', realEmployees);
+      
       // Update the employee status in real-time
-      setRealEmployees(prevEmployees => 
-        prevEmployees.map(emp => {
-          // Match by database ID first, then by name as fallback
-          if (emp.id == data.employeeId || emp._id == data.employeeId || emp.name === data.employeeName || emp.email === data.employeeName) {
+      setRealEmployees(prevEmployees => {
+        const updatedEmployees = prevEmployees.map(emp => {
+          // Match by MongoDB ObjectId - this is the key fix
+          if (emp._id === data.employeeId || emp.id === data.employeeId) {
+            console.log('Updating employee status for:', emp.name);
             return { 
               ...emp, 
               status: 'completed'
             };
           }
           return emp;
-        })
-      );
+        });
+        console.log('Updated employees:', updatedEmployees);
+        return updatedEmployees;
+      });
+    });
+    
+    // Add connection error handling
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+    
+    socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
     });
     
     // Clean up socket connection
     return () => {
+      console.log('Disconnecting socket...');
       socket.disconnect();
     };
   }, []);
-
-  
 
   // Update attendance data when component updates
   useEffect(() => {
@@ -258,75 +288,62 @@ const AdminDashboard = () => {
     });
   };
     // Real employee database
-  const loadDashboardData = () => {
-    // Try to load existing employee data from localStorage first
-    const savedEmployees = localStorage.getItem('realEmployees');
-    let employees = [];
-    
-    if (savedEmployees) {
-      try {
-        employees = JSON.parse(savedEmployees);
-        // Update employee status based on today's check-ins
-        const today = format(new Date(), 'yyyy-MM-dd');
-        employees = employees.map(emp => {
-          const checkInKey = `checkIn_${emp.id}_${today}`;
-          const checkInData = localStorage.getItem(checkInKey);
-          
-          if (checkInData) {
-            try {
-              const data = JSON.parse(checkInData);
-              if (data.checkedIn && !data.checkOutTime) {
-                return {
-                  ...emp,
-                  status: 'active',
-                  checkIn: format(new Date(data.checkInTime), 'HH:mm'),
-                  location: data.location || 'Office'
-                };
-              } else if (data.checkOutTime) {
-                // Calculate hours worked
-                const checkInTime = new Date(data.checkInTime);
-                const checkOutTime = new Date(data.checkOutTime);
-                const diffMs = checkOutTime - checkInTime;
-                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                const hoursWorked = `${diffHours}:${diffMinutes.toString().padStart(2, '0')}`;
-                
-                return {
-                  ...emp,
-                  status: 'completed',
-                  checkIn: format(new Date(data.checkInTime), 'HH:mm'),
-                  location: data.location || 'Office',
-                  hours: hoursWorked
-                };
-              }
-            } catch (error) {
-              console.error('Error parsing check-in data for employee', emp.id, ':', error);
-            }
-          }
-          
-          return emp;
-        });
-      } catch (error) {
-        console.error('Error loading saved employee data:', error);
-        // Fall back to default data if there's an error
-        employees = getDefaultEmployees();
+  const loadDashboardData = async () => {
+    try {
+      // Fetch real employee data from the server
+      const response = await fetch('/api/employees');
+      if (response.ok) {
+        const employeesData = await response.json();
+        
+        // Transform the data to match the expected format
+        const employees = employeesData.map(emp => ({
+          id: emp._id, // Use the actual MongoDB _id
+          _id: emp._id,
+          name: emp.name,
+          email: emp.email,
+          password: '********', // Don't expose passwords
+          department: emp.department,
+          role: emp.position,
+          status: 'absent', // Default status
+          checkIn: '-',
+          hours: '0:00',
+          location: 'Absent',
+          productivity: Math.floor(Math.random() * 40) + 60, // Random productivity score
+          joinDate: emp.dateOfJoining || new Date().toISOString(),
+          phone: emp.phone || 'N/A'
+        }));
+        
+        setRealEmployees(employees);
+        setEmployeeStatus(employees);
+        
+        // Update stats based on real data
+        const activeCount = employees.filter(emp => emp.status === 'active' || emp.status === 'completed').length;
+        const leaveCount = employees.filter(emp => emp.status === 'leave').length;
+        const absentCount = employees.filter(emp => emp.status === 'absent').length;
+        const avgProductivity = employees.reduce((sum, emp) => sum + emp.productivity, 0) / employees.length;
+        
+        setStats(prev => ({
+          ...prev,
+          totalEmployees: employees.length,
+          activeToday: activeCount,
+          onLeave: leaveCount,
+          absentToday: absentCount,
+          productivity: avgProductivity.toFixed(1),
+          attendanceRate: ((activeCount / employees.length) * 100).toFixed(1)
+        }));
+        
+        return;
       }
-    } else {
-      // Use default data if no saved data exists
-      employees = getDefaultEmployees();
+    } catch (error) {
+      console.error('Error fetching employee data:', error);
     }
-
+    
+    // Fallback to default data if API fails
+    const employees = getDefaultEmployees();
     setRealEmployees(employees);
     setEmployeeStatus(employees);
     
-    // Save to localStorage for login authentication
-    try {
-      localStorage.setItem('realEmployees', JSON.stringify(employees));
-    } catch (error) {
-      console.log('Failed to save employee data to localStorage:', error);
-    }
-
-    // Update stats based on real data
+    // Update stats based on default data
     const activeCount = employees.filter(emp => emp.status === 'active' || emp.status === 'completed').length;
     const leaveCount = employees.filter(emp => emp.status === 'leave').length;
     const absentCount = employees.filter(emp => emp.status === 'absent').length;

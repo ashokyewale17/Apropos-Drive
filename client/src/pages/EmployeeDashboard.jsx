@@ -93,6 +93,8 @@ const EmployeeDashboard = () => {
 
   const handleCheckIn = async (location = selectedLocation) => {
     try {
+      console.log('Sending check-in request with employeeId:', user.id);
+      
       const response = await fetch('/api/attendance-records/checkin', {
         method: 'POST',
         headers: {
