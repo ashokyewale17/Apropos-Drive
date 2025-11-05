@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
+import { io } from 'socket.io-client';
 import EmployeeAttendance from "./EmployeeAttendance";
 import { 
   Clock, PlayCircle, StopCircle, Calendar, Timer, Coffee, TrendingUp, 
@@ -54,7 +55,20 @@ const EmployeeDashboard = () => {
     loadWeeklyData();
     loadStats();
     loadRecentActivity();
-  }, []);
+    
+    // Set up socket connection
+    const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000');
+    
+    // Join the socket room with employee ID
+    if (user && user.id) {
+      socket.emit('join', user.id);
+    }
+    
+    // Clean up socket connection
+    return () => {
+      socket.disconnect();
+    };
+  }, [user]);
 
   const updateWorkingTime = () => {
     if (checkInTime) {

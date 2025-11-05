@@ -188,13 +188,13 @@ router.post("/checkin", async (req, res) => {
       console.warn('Could not populate employee details:', populateError.message);
     }
     
-    // Emit socket event for real-time update
+    // Emit socket event for real-time update with proper employee data
     const io = req.app.get('io');
     if (io) {
       io.emit('employeeCheckIn', {
-        employeeId: employeeId,
-        employeeName: attendanceRecord.employeeId?.name || 'Unknown',
-        department: attendanceRecord.employeeId?.department || 'Unknown',
+        employeeId: employee._id.toString(), // Use the actual database ID
+        employeeName: employee.name, // Use the actual employee name
+        department: employee.department || 'Unknown',
         checkInTime: attendanceRecord.inTime,
         location: location || 'Office'
       });
@@ -285,13 +285,13 @@ router.post("/checkout", async (req, res) => {
       console.warn('Could not populate employee details:', populateError.message);
     }
     
-    // Emit socket event for real-time update
+    // Emit socket event for real-time update with proper employee data
     const io = req.app.get('io');
     if (io) {
       io.emit('employeeCheckOut', {
-        employeeId: employeeId,
-        employeeName: attendanceRecord.employeeId?.name || 'Unknown',
-        department: attendanceRecord.employeeId?.department || 'Unknown',
+        employeeId: employee._id.toString(), // Use the actual database ID
+        employeeName: employee.name, // Use the actual employee name
+        department: employee.department || 'Unknown',
         checkOutTime: attendanceRecord.outTime,
         hoursWorked: hoursWorked
       });

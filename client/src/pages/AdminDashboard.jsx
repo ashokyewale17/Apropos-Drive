@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
+import { io } from 'socket.io-client';
 import { 
   Users, Clock, FileText, TrendingUp, AlertCircle, CheckCircle, Calendar, Timer,
   BarChart3, DollarSign, Target, Award, Activity, Settings, RefreshCw, Download,
@@ -82,10 +83,58 @@ const AdminDashboard = () => {
     loadDashboardData();
     generateAnalyticsData();
     
-    // Immediately check for any recent check-ins after loading data
-    setTimeout(() => {
-      checkForEmployeeCheckIns();
-    }, 1000);
+    // Set up socket connection for real-time updates
+    const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000');
+    
+    // Listen for employee check-in events
+    socket.on('employeeCheckIn', (data) => {
+      console.log('Employee checked in (real-time):', data);
+      // Update the employee status in real-time
+      setRealEmployees(prevEmployees => 
+        prevEmployees.map(emp => {
+          // Match by database ID first, then by name as fallback
+          if (emp.id == data.employeeId || emp._id == data.employeeId || emp.name === data.employeeName || emp.email === data.employeeName) {
+            return { 
+              ...emp, 
+              status: 'active', 
+              checkIn: new Date(data.checkInTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+              location: data.location || 'Office'
+            };
+          }
+          return emp;
+        })
+      );
+      
+      // Update stats
+      setStats(prevStats => ({
+        ...prevStats,
+        activeToday: prevStats.activeToday + 1,
+        attendanceRate: (((prevStats.activeToday + 1) / prevStats.totalEmployees) * 100).toFixed(1)
+      }));
+    });
+    
+    // Listen for employee check-out events
+    socket.on('employeeCheckOut', (data) => {
+      console.log('Employee checked out (real-time):', data);
+      // Update the employee status in real-time
+      setRealEmployees(prevEmployees => 
+        prevEmployees.map(emp => {
+          // Match by database ID first, then by name as fallback
+          if (emp.id == data.employeeId || emp._id == data.employeeId || emp.name === data.employeeName || emp.email === data.employeeName) {
+            return { 
+              ...emp, 
+              status: 'completed'
+            };
+          }
+          return emp;
+        })
+      );
+    });
+    
+    // Clean up socket connection
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   
