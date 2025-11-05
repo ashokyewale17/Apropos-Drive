@@ -62,6 +62,7 @@ const EmployeeDashboard = () => {
     // Join the socket room with employee ID
     if (user && user.id) {
       socket.emit('join', user.id);
+      console.log('Employee joined with ID:', user.id);
     }
     
     // Clean up socket connection

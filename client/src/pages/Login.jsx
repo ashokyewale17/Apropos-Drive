@@ -70,7 +70,7 @@ const Login = () => {
     setError('');
 
     try {
-      // Call the actual API for authentication
+      // Call the actual API for authentication - ONLY real data, no mock fallback
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -109,13 +109,14 @@ const Login = () => {
   const fillDemoCredentials = (type) => {
     if (type === 'admin') {
       setFormData({
-        email: 'tushar.mhaskar@company.com',
+        email: 'admin@company.com',
         password: 'admin123'
       });
     } else {
+      // No demo credentials for employees - they must be created by admin
       setFormData({
-        email: 'vijay.solanki@company.com',
-        password: 'test123'
+        email: '',
+        password: ''
       });
     }
   };
@@ -255,126 +256,113 @@ const Login = () => {
         <form onSubmit={handleSubmit} style={{ position: 'relative', zIndex: 1 }}>
           {error && (
             <div style={{
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-              color: '#dc2626',
-              padding: '1rem',
-              borderRadius: '12px',
+              background: '#fee2e2',
+              border: '1px solid #fecaca',
+              color: '#ef4444',
+              padding: '0.75rem 1rem',
+              borderRadius: '0.5rem',
               marginBottom: '1.5rem',
               fontSize: '0.875rem',
-              fontWeight: '500',
-              textAlign: 'center',
-              backdropFilter: 'blur(10px)'
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
             }}>
+              <AlertCircle size={16} />
               {error}
             </div>
           )}
-
+          
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{
               display: 'block',
               marginBottom: '0.5rem',
+              fontWeight: '500',
               color: '#374151',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              letterSpacing: '0.025em'
-            }}>Email Address</label>
-            <div style={{ position: 'relative' }}>
-              <div style={{
+              fontSize: '0.875rem'
+            }}>
+              Email Address
+            </label>
+            <div style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <Mail size={18} style={{
                 position: 'absolute',
                 left: '1rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: '#9ca3af',
-                zIndex: 1
-              }}>
-                <Mail size={18} />
-              </div>
+                color: '#9ca3af'
+              }} />
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="Enter your email"
-                required
+                placeholder="you@company.com"
                 style={{
                   width: '100%',
-                  padding: '1rem 1rem 1rem 3rem',
-                  borderRadius: '12px',
-                  border: '2px solid rgba(229, 231, 235, 0.8)',
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  backdropFilter: 'blur(10px)',
-                  fontSize: '0.975rem',
-                  color: '#111827',
-                  fontWeight: '500',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  outline: 'none',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+                  padding: '0.75rem 0.75rem 0.75rem 3rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.5rem',
+                  fontSize: '1rem',
+                  transition: 'all 0.2s',
+                  background: 'white',
+                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#667eea';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1), 0 4px 12px -2px rgba(102, 126, 234, 0.2)';
-                  e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(229, 231, 235, 0.8)';
-                  e.target.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
-                  e.target.style.background = 'rgba(255, 255, 255, 0.8)';
+                  e.target.style.borderColor = '#d1d5db';
+                  e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                 }}
               />
             </div>
           </div>
-
-          <div style={{ marginBottom: '2rem' }}>
+          
+          <div style={{ marginBottom: '1.5rem' }}>
             <label style={{
               display: 'block',
               marginBottom: '0.5rem',
+              fontWeight: '500',
               color: '#374151',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              letterSpacing: '0.025em'
-            }}>Password</label>
-            <div style={{ position: 'relative' }}>
-              <div style={{
+              fontSize: '0.875rem'
+            }}>
+              Password
+            </label>
+            <div style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <Lock size={18} style={{
                 position: 'absolute',
                 left: '1rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: '#9ca3af',
-                zIndex: 1
-              }}>
-                <Lock size={18} />
-              </div>
+                color: '#9ca3af'
+              }} />
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Enter your password"
-                required
+                placeholder="••••••••"
                 style={{
                   width: '100%',
-                  padding: '1rem 3rem 1rem 3rem',
-                  borderRadius: '12px',
-                  border: '2px solid rgba(229, 231, 235, 0.8)',
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  backdropFilter: 'blur(10px)',
-                  fontSize: '0.975rem',
-                  color: '#111827',
-                  fontWeight: '500',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  outline: 'none',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+                  padding: '0.75rem 3rem 0.75rem 3rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.5rem',
+                  fontSize: '1rem',
+                  transition: 'all 0.2s',
+                  background: 'white',
+                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#667eea';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1), 0 4px 12px -2px rgba(102, 126, 234, 0.2)';
-                  e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(229, 231, 235, 0.8)';
-                  e.target.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
-                  e.target.style.background = 'rgba(255, 255, 255, 0.8)';
+                  e.target.style.borderColor = '#d1d5db';
+                  e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                 }}
               />
               <button
@@ -383,73 +371,47 @@ const Login = () => {
                 style={{
                   position: 'absolute',
                   right: '1rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
                   color: '#9ca3af',
-                  padding: '0.25rem',
-                  borderRadius: '6px',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.color = '#667eea';
-                  e.target.style.background = 'rgba(102, 126, 234, 0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.color = '#9ca3af';
-                  e.target.style.background = 'none';
+                  padding: '0.25rem'
                 }}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
-
+          
           <button
             type="submit"
             disabled={loading}
             style={{
               width: '100%',
-              padding: '1rem 2rem',
-              borderRadius: '12px',
-              border: 'none',
-              background: loading 
-                ? 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)'
-                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: loading ? 'linear-gradient(135deg, #93c5fd 0%, #a5b4fc 100%)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              padding: '0.75rem 1.5rem',
               fontSize: '1rem',
-              fontWeight: '700',
-              letterSpacing: '0.05em',
-              textTransform: 'uppercase',
+              fontWeight: '600',
               cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              boxShadow: loading 
-                ? '0 4px 12px -2px rgba(107, 114, 128, 0.3)'
-                : '0 8px 25px -8px rgba(102, 126, 234, 0.5)',
+              transition: 'all 0.2s',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.5rem',
-              marginBottom: '2rem',
-              position: 'relative',
-              overflow: 'hidden'
+              boxShadow: '0 4px 6px -1px rgba(102, 126, 234, 0.3), 0 2px 4px -1px rgba(102, 126, 234, 0.1)'
             }}
             onMouseEnter={(e) => {
               if (!loading) {
                 e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 12px 35px -8px rgba(102, 126, 234, 0.6)';
+                e.target.style.boxShadow = '0 10px 15px -3px rgba(102, 126, 234, 0.4), 0 4px 6px -2px rgba(102, 126, 234, 0.2)';
               }
             }}
             onMouseLeave={(e) => {
-              if (!loading) {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 8px 25px -8px rgba(102, 126, 234, 0.5)';
-              }
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 4px 6px -1px rgba(102, 126, 234, 0.3), 0 2px 4px -1px rgba(102, 126, 234, 0.1)';
             }}
           >
             {loading ? (
@@ -457,23 +419,59 @@ const Login = () => {
                 <div style={{
                   width: '20px',
                   height: '20px',
-                  border: '2px solid rgba(255,255,255,0.3)',
-                  borderTop: '2px solid white',
+                  border: '2px solid #ffffff',
+                  borderBottomColor: 'transparent',
                   borderRadius: '50%',
                   animation: 'spin 1s linear infinite'
-                }} />
+                }}></div>
                 Signing in...
               </>
             ) : (
               <>
-                <Sparkles size={18} />
-                Sign In
+                Sign in
                 <ArrowRight size={18} />
               </>
             )}
           </button>
+          
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '1rem',
+            marginTop: '1.5rem',
+            fontSize: '0.875rem'
+          }}>
+            <button
+              type="button"
+              onClick={() => fillDemoCredentials('admin')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#667eea',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                fontSize: '0.875rem'
+              }}
+            >
+              Admin Demo
+            </button>
+            <span style={{ color: '#9ca3af' }}>|</span>
+            <button
+              type="button"
+              onClick={() => fillDemoCredentials('employee')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#667eea',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                fontSize: '0.875rem'
+              }}
+            >
+              Employee Login
+            </button>
+          </div>
         </form>
-
       </div>
     </div>
   );

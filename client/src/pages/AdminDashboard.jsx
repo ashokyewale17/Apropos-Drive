@@ -105,8 +105,8 @@ const AdminDashboard = () => {
       // Update the employee status in real-time
       setRealEmployees(prevEmployees => {
         const updatedEmployees = prevEmployees.map(emp => {
-          // Match by MongoDB ObjectId - this is the key fix
-          if (emp._id === data.employeeId || emp.id === data.employeeId) {
+          // Match by MongoDB ObjectId - simple and reliable
+          if (emp._id === data.employeeId) {
             console.log('Updating employee status for:', emp.name);
             return { 
               ...emp, 
@@ -138,8 +138,8 @@ const AdminDashboard = () => {
       // Update the employee status in real-time
       setRealEmployees(prevEmployees => {
         const updatedEmployees = prevEmployees.map(emp => {
-          // Match by MongoDB ObjectId - this is the key fix
-          if (emp._id === data.employeeId || emp.id === data.employeeId) {
+          // Match by MongoDB ObjectId - simple and reliable
+          if (emp._id === data.employeeId) {
             console.log('Updating employee status for:', emp.name);
             return { 
               ...emp, 
@@ -293,23 +293,24 @@ const AdminDashboard = () => {
       // Fetch real employee data from the server
       const response = await fetch('/api/employees');
       if (response.ok) {
-        const employeesData = await response.json();
+        const data = await response.json();
+        const employeesData = data.employees || data; // Handle different response formats
         
-        // Transform the data to match the expected format
+        // Transform the data to match the expected format with actual MongoDB ObjectIds
         const employees = employeesData.map(emp => ({
-          id: emp._id, // Use the actual MongoDB _id
-          _id: emp._id,
+          id: emp._id, // Use the actual MongoDB _id as the primary ID
+          _id: emp._id, // Keep the _id for consistency
           name: emp.name,
           email: emp.email,
           password: '********', // Don't expose passwords
           department: emp.department,
-          role: emp.position,
+          role: emp.position || emp.role,
           status: 'absent', // Default status
           checkIn: '-',
           hours: '0:00',
           location: 'Absent',
           productivity: Math.floor(Math.random() * 40) + 60, // Random productivity score
-          joinDate: emp.dateOfJoining || new Date().toISOString(),
+          joinDate: emp.dateOfJoining || emp.createdAt || new Date().toISOString(),
           phone: emp.phone || 'N/A'
         }));
         
@@ -320,7 +321,7 @@ const AdminDashboard = () => {
         const activeCount = employees.filter(emp => emp.status === 'active' || emp.status === 'completed').length;
         const leaveCount = employees.filter(emp => emp.status === 'leave').length;
         const absentCount = employees.filter(emp => emp.status === 'absent').length;
-        const avgProductivity = employees.reduce((sum, emp) => sum + emp.productivity, 0) / employees.length;
+        const avgProductivity = employees.length > 0 ? employees.reduce((sum, emp) => sum + emp.productivity, 0) / employees.length : 0;
         
         setStats(prev => ({
           ...prev,
@@ -329,187 +330,34 @@ const AdminDashboard = () => {
           onLeave: leaveCount,
           absentToday: absentCount,
           productivity: avgProductivity.toFixed(1),
-          attendanceRate: ((activeCount / employees.length) * 100).toFixed(1)
+          attendanceRate: employees.length > 0 ? ((activeCount / employees.length) * 100).toFixed(1) : '0.0'
         }));
         
-        return;
+        return true;
       }
     } catch (error) {
       console.error('Error fetching employee data:', error);
     }
     
-    // Fallback to default data if API fails
-    const employees = getDefaultEmployees();
-    setRealEmployees(employees);
-    setEmployeeStatus(employees);
-    
-    // Update stats based on default data
-    const activeCount = employees.filter(emp => emp.status === 'active' || emp.status === 'completed').length;
-    const leaveCount = employees.filter(emp => emp.status === 'leave').length;
-    const absentCount = employees.filter(emp => emp.status === 'absent').length;
-    const avgProductivity = employees.reduce((sum, emp) => sum + emp.productivity, 0) / employees.length;
-    
+    // If API fails, show empty state
+    setRealEmployees([]);
+    setEmployeeStatus([]);
     setStats(prev => ({
       ...prev,
-      totalEmployees: employees.length,
-      activeToday: activeCount,
-      onLeave: leaveCount,
-      absentToday: absentCount,
-      productivity: avgProductivity.toFixed(1),
-      attendanceRate: ((activeCount / employees.length) * 100).toFixed(1)
+      totalEmployees: 0,
+      activeToday: 0,
+      onLeave: 0,
+      absentToday: 0,
+      productivity: '0.0',
+      attendanceRate: '0.0'
     }));
-
-    // Real activity data based on employees
-    setRecentActivity([
-      {
-        id: 1,
-        type: 'check-in',
-        employee: 'Tushar Mhaskar',
-        department: 'Admin',
-        time: new Date(Date.now() - 15 * 60 * 1000),
-        status: 'success',
-        avatar: 'TM'
-      },
-      {
-        id: 2,
-        type: 'leave-request',
-        employee: 'Harshal Lohar',
-        department: 'Software',
-        time: new Date(Date.now() - 45 * 60 * 1000),
-        status: 'pending',
-        avatar: 'HL'
-      },
-      {
-        id: 3,
-        type: 'task-completed',
-        employee: 'Ashok Yewale',
-        department: 'Software',
-        time: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        status: 'success',
-        avatar: 'AY'
-      },
-      {
-        id: 4,
-        type: 'check-in',
-        employee: 'Pinky Chakrabarty',
-        department: 'Operations',
-        time: new Date(Date.now() - 3 * 60 * 60 * 1000),
-        status: 'success',
-        avatar: 'PC'
-      }
-    ]);
+    
+    return false;
   };
 
-  // Helper function to get default employee data
+  // No mock data - only real employees from database
   const getDefaultEmployees = () => {
-    return [
-      {
-        id: 1,
-        name: 'Tushar Mhaskar',
-        email: 'tushar.mhaskar@company.com',
-        password: 'admin123', // In real app, this should be hashed
-        department: 'Admin',
-        role: 'Admin & HR',
-        status: 'active',
-        checkIn: '08:30',
-        hours: '8:00',
-        location: 'Office',
-        productivity: 98,
-        joinDate: '2023-01-15',
-        phone: '+91-9876543210',
-        isAdmin: true
-      },
-      {
-        id: 2,
-        name: 'Vijay Solanki',
-        email: 'vijay.solanki@company.com',
-        password: 'test123',
-        department: 'Testing',
-        role: 'QA Engineer',
-        status: 'active',
-        checkIn: '09:00',
-        hours: '7:30',
-        location: 'Office',
-        productivity: 94,
-        joinDate: '2023-02-20',
-        phone: '+91-9876543211'
-      },
-      {
-        id: 3,
-        name: 'Pinky Chakrabarty',
-        email: 'pinky.chakrabarty@company.com',
-        password: 'ops123',
-        department: 'Operations',
-        role: 'Operations Manager',
-        status: 'active',
-        checkIn: '08:45',
-        hours: '8:15',
-        location: 'Office',
-        productivity: 96,
-        joinDate: '2023-01-10',
-        phone: '+91-9876543212'
-      },
-      {
-        id: 4,
-        name: 'Sanket Pawal',
-        email: 'sanket.pawal@company.com',
-        password: 'design123',
-        department: 'Design',
-        role: 'UI/UX Designer',
-        status: 'active',
-        checkIn: '09:15',
-        hours: '7:45',
-        location: 'Remote',
-        productivity: 92,
-        joinDate: '2023-03-05',
-        phone: '+91-9876543213'
-      },
-      {
-        id: 5,
-        name: 'Ashok Yewale',
-        email: 'ashok.yewale@company.com',
-        password: 'soft123',
-        department: 'Software',
-        role: 'Software Developer',
-        status: 'active',
-        checkIn: '08:15',
-        hours: '8:30',
-        location: 'Office',
-        productivity: 95,
-        joinDate: '2023-02-01',
-        phone: '+91-9876543214'
-      },
-      {
-        id: 6,
-        name: 'Harshal Lohar',
-        email: 'harshal.lohar@company.com',
-        password: 'soft123',
-        department: 'Software',
-        role: 'Senior Developer',
-        status: 'absent',
-        checkIn: '-',
-        hours: '0:00',
-        location: 'Absent',
-        productivity: 0,
-        joinDate: '2022-12-15',
-        phone: '+91-9876543215'
-      },
-      {
-        id: 7,
-        name: 'Prasanna Pandit',
-        email: 'prasanna.pandit@company.com',
-        password: 'embed123',
-        department: 'Embedded',
-        role: 'Embedded Engineer',
-        status: 'late',
-        checkIn: '10:30',
-        hours: '6:30',
-        location: 'Office',
-        productivity: 85,
-        joinDate: '2023-03-20',
-        phone: '+91-9876543216'
-      }
-    ];
+    return [];
   };
 
   const generateMonthlyAttendance = (employees) => {
