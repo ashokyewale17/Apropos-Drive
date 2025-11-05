@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
-import { io } from 'socket.io-client';
 import { 
   Users, Clock, FileText, TrendingUp, AlertCircle, CheckCircle, Calendar, Timer,
   BarChart3, DollarSign, Target, Award, Activity, Settings, RefreshCw, Download,
@@ -83,46 +82,10 @@ const AdminDashboard = () => {
     loadDashboardData();
     generateAnalyticsData();
     
-    // Set up socket connection for real-time updates
-    const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000');
-    
-    // Listen for employee check-in events
-    socket.on('employeeCheckIn', (data) => {
-      console.log('Employee checked in (real-time):', data);
-      // Update the employee status in real-time
-      setRealEmployees(prevEmployees => 
-        prevEmployees.map(emp => 
-          emp.email === data.employeeName || emp.id == data.employeeId 
-            ? { ...emp, status: 'active', checkIn: new Date(data.checkInTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }
-            : emp
-        )
-      );
-      
-      // Update stats
-      setStats(prevStats => ({
-        ...prevStats,
-        activeToday: prevStats.activeToday + 1,
-        attendanceRate: (((prevStats.activeToday + 1) / prevStats.totalEmployees) * 100).toFixed(1)
-      }));
-    });
-    
-    // Listen for employee check-out events
-    socket.on('employeeCheckOut', (data) => {
-      console.log('Employee checked out (real-time):', data);
-      // Update the employee status in real-time
-      setRealEmployees(prevEmployees => 
-        prevEmployees.map(emp => 
-          emp.email === data.employeeName || emp.id == data.employeeId 
-            ? { ...emp, status: 'completed' }
-            : emp
-        )
-      );
-    });
-    
-    // Clean up socket connection
-    return () => {
-      socket.disconnect();
-    };
+    // Immediately check for any recent check-ins after loading data
+    setTimeout(() => {
+      checkForEmployeeCheckIns();
+    }, 1000);
   }, []);
 
   
@@ -179,10 +142,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (realEmployees.length > 0) {
-      const loadMonthlyAttendance = async () => {
-        await generateMonthlyAttendance(realEmployees);
-      };
-      loadMonthlyAttendance();
+      generateMonthlyAttendance(realEmployees);
     }
   }, [realEmployees, selectedMonth, selectedYear]);
 
@@ -250,13 +210,72 @@ const AdminDashboard = () => {
   };
     // Real employee database
   const loadDashboardData = () => {
-    // Use default employee data (removed localStorage retrieval)
-    const employees = getDefaultEmployees();
+    // Try to load existing employee data from localStorage first
+    const savedEmployees = localStorage.getItem('realEmployees');
+    let employees = [];
+    
+    if (savedEmployees) {
+      try {
+        employees = JSON.parse(savedEmployees);
+        // Update employee status based on today's check-ins
+        const today = format(new Date(), 'yyyy-MM-dd');
+        employees = employees.map(emp => {
+          const checkInKey = `checkIn_${emp.id}_${today}`;
+          const checkInData = localStorage.getItem(checkInKey);
+          
+          if (checkInData) {
+            try {
+              const data = JSON.parse(checkInData);
+              if (data.checkedIn && !data.checkOutTime) {
+                return {
+                  ...emp,
+                  status: 'active',
+                  checkIn: format(new Date(data.checkInTime), 'HH:mm'),
+                  location: data.location || 'Office'
+                };
+              } else if (data.checkOutTime) {
+                // Calculate hours worked
+                const checkInTime = new Date(data.checkInTime);
+                const checkOutTime = new Date(data.checkOutTime);
+                const diffMs = checkOutTime - checkInTime;
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                const hoursWorked = `${diffHours}:${diffMinutes.toString().padStart(2, '0')}`;
+                
+                return {
+                  ...emp,
+                  status: 'completed',
+                  checkIn: format(new Date(data.checkInTime), 'HH:mm'),
+                  location: data.location || 'Office',
+                  hours: hoursWorked
+                };
+              }
+            } catch (error) {
+              console.error('Error parsing check-in data for employee', emp.id, ':', error);
+            }
+          }
+          
+          return emp;
+        });
+      } catch (error) {
+        console.error('Error loading saved employee data:', error);
+        // Fall back to default data if there's an error
+        employees = getDefaultEmployees();
+      }
+    } else {
+      // Use default data if no saved data exists
+      employees = getDefaultEmployees();
+    }
 
     setRealEmployees(employees);
     setEmployeeStatus(employees);
     
-    // Removed localStorage save
+    // Save to localStorage for login authentication
+    try {
+      localStorage.setItem('realEmployees', JSON.stringify(employees));
+    } catch (error) {
+      console.log('Failed to save employee data to localStorage:', error);
+    }
 
     // Update stats based on real data
     const activeCount = employees.filter(emp => emp.status === 'active' || emp.status === 'completed').length;
@@ -427,201 +446,101 @@ const AdminDashboard = () => {
     ];
   };
 
-  const generateMonthlyAttendance = async (employees) => {
-    try {
-      // Fetch real attendance data from the API
-      const response = await fetch(`/api/attendance-records/all/${selectedMonth + 1}/${selectedYear}`);
+  const generateMonthlyAttendance = (employees) => {
+    const monthlyData = employees.map(employee => {
+      const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+      const attendanceRecords = [];
+      let presentDays = 0;
+      let totalHours = 0;
+      let leaveDays = 0;
       
-      if (response.ok) {
-        const realMonthlyData = await response.json();
-        setMonthlyAttendance(realMonthlyData);
-      } else {
-        console.error('Failed to fetch attendance data:', response.status);
-        // Fallback to mock data if API call fails
-        const monthlyData = employees.map(employee => {
-          const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-          const attendanceRecords = [];
-          let presentDays = 0;
-          let totalHours = 0;
-          let leaveDays = 0;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(selectedYear, selectedMonth, day);
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+        
+        if (!isWeekend && date <= new Date()) {
+          const isPresent = Math.random() > 0.1; // 90% attendance rate
+          const isLate = Math.random() < 0.15; // 15% late rate
+          const isOnLeave = Math.random() < 0.05; // 5% leave rate
           
-          for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(selectedYear, selectedMonth, day);
-            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+          let status = 'present';
+          let inTime = '';
+          let outTime = '';
+          let hoursWorked = 0;
+          
+          if (isOnLeave) {
+            status = 'leave';
+            leaveDays++;
+          } else if (isPresent) {
+            const baseInHour = isLate ? 9 + Math.floor(Math.random() * 2) : 8 + Math.floor(Math.random() * 2);
+            const inMinutes = Math.floor(Math.random() * 60);
+            const outHour = baseInHour + 8 + Math.floor(Math.random() * 2);
+            const outMinutes = Math.floor(Math.random() * 60);
             
-            if (!isWeekend && date <= new Date()) {
-              const isPresent = Math.random() > 0.1; // 90% attendance rate
-              const isLate = Math.random() < 0.15; // 15% late rate
-              const isOnLeave = Math.random() < 0.05; // 5% leave rate
-              
-              let status = 'present';
-              let inTime = '';
-              let outTime = '';
-              let hoursWorked = 0;
-              
-              if (isOnLeave) {
-                status = 'leave';
-                leaveDays++;
-              } else if (isPresent) {
-                const baseInHour = isLate ? 9 + Math.floor(Math.random() * 2) : 8 + Math.floor(Math.random() * 2);
-                const inMinutes = Math.floor(Math.random() * 60);
-                const outHour = baseInHour + 8 + Math.floor(Math.random() * 2);
-                const outMinutes = Math.floor(Math.random() * 60);
-                
-                inTime = `${baseInHour.toString().padStart(2, '0')}:${inMinutes.toString().padStart(2, '0')}`;
-                outTime = `${outHour.toString().padStart(2, '0')}:${outMinutes.toString().padStart(2, '0')}`;
-                
-                const inDate = new Date(date);
-                inDate.setHours(baseInHour, inMinutes);
+            inTime = `${baseInHour.toString().padStart(2, '0')}:${inMinutes.toString().padStart(2, '0')}`;
+            outTime = `${outHour.toString().padStart(2, '0')}:${outMinutes.toString().padStart(2, '0')}`;
+            
+            const inDate = new Date(date);
+            inDate.setHours(baseInHour, inMinutes);
 
-                const outDate = new Date(date);
-                outDate.setHours(outHour, outMinutes);
-                
-                hoursWorked = (outDate - inDate) / (1000 * 60 * 60);
-                totalHours += hoursWorked;
-                presentDays++;
-                
-                if (isLate) {
-                  status = 'late';
-                }
-              } else {
-                status = 'absent';
-              }
-              
-              attendanceRecords.push({
-                date: day,
-                status,
-                inTime,
-                outTime,
-                hoursWorked: hoursWorked.toFixed(1)
-              });
-            } else if (isWeekend) {
-              attendanceRecords.push({
-                date: day,
-                status: 'weekend',
-                inTime: '',
-                outTime: '',
-                hoursWorked: '0'
-              });
+            const outDate = new Date(date);
+            outDate.setHours(outHour, outMinutes);
+            
+            hoursWorked = (outDate - inDate) / (1000 * 60 * 60);
+            totalHours += hoursWorked;
+            presentDays++;
+            
+            if (isLate) {
+              status = 'late';
             }
+          } else {
+            status = 'absent';
           }
           
-          const avgHoursDecimal = presentDays > 0 ? (totalHours / presentDays) : 0;
-          const avgHours = presentDays > 0 ? (totalHours / presentDays).toFixed(1) : '0.0';
-          
-          return {
-            employee,
-            attendanceRecords,
-            summary: {
-              presentDays,
-              leaveDays,
-              totalHours: totalHours.toFixed(1),
-              avgHours,
-              attendanceRate: ((presentDays / (daysInMonth - 8)) * 100).toFixed(1) // Excluding weekends
-            }
-          };
-        });
-        
-        setMonthlyAttendance(monthlyData);
-      }
-    } catch (error) {
-      console.error('Error fetching attendance data:', error);
-      // Fallback to mock data if API call fails
-      const monthlyData = employees.map(employee => {
-        const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-        const attendanceRecords = [];
-        let presentDays = 0;
-        let totalHours = 0;
-        let leaveDays = 0;
-        
-        for (let day = 1; day <= daysInMonth; day++) {
-          const date = new Date(selectedYear, selectedMonth, day);
-          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-          
-          if (!isWeekend && date <= new Date()) {
-            const isPresent = Math.random() > 0.1; // 90% attendance rate
-            const isLate = Math.random() < 0.15; // 15% late rate
-            const isOnLeave = Math.random() < 0.05; // 5% leave rate
-            
-            let status = 'present';
-            let inTime = '';
-            let outTime = '';
-            let hoursWorked = 0;
-            
-            if (isOnLeave) {
-              status = 'leave';
-              leaveDays++;
-            } else if (isPresent) {
-              const baseInHour = isLate ? 9 + Math.floor(Math.random() * 2) : 8 + Math.floor(Math.random() * 2);
-              const inMinutes = Math.floor(Math.random() * 60);
-              const outHour = baseInHour + 8 + Math.floor(Math.random() * 2);
-              const outMinutes = Math.floor(Math.random() * 60);
-              
-              inTime = `${baseInHour.toString().padStart(2, '0')}:${inMinutes.toString().padStart(2, '0')}`;
-              outTime = `${outHour.toString().padStart(2, '0')}:${outMinutes.toString().padStart(2, '0')}`;
-              
-              const inDate = new Date(date);
-              inDate.setHours(baseInHour, inMinutes);
-
-              const outDate = new Date(date);
-              outDate.setHours(outHour, outMinutes);
-              
-              hoursWorked = (outDate - inDate) / (1000 * 60 * 60);
-              totalHours += hoursWorked;
-              presentDays++;
-              
-              if (isLate) {
-                status = 'late';
-              }
-            } else {
-              status = 'absent';
-            }
-            
-            attendanceRecords.push({
-              date: day,
-              status,
-              inTime,
-              outTime,
-              hoursWorked: hoursWorked.toFixed(1)
-            });
-          } else if (isWeekend) {
-            attendanceRecords.push({
-              date: day,
-              status: 'weekend',
-              inTime: '',
-              outTime: '',
-              hoursWorked: '0'
-            });
-          }
+          attendanceRecords.push({
+            date: day,
+            status,
+            inTime,
+            outTime,
+            hoursWorked: hoursWorked.toFixed(1)
+          });
+        } else if (isWeekend) {
+          attendanceRecords.push({
+            date: day,
+            status: 'weekend',
+            inTime: '',
+            outTime: '',
+            hoursWorked: '0'
+          });
         }
-        
-        const avgHoursDecimal = presentDays > 0 ? (totalHours / presentDays) : 0;
-        const avgHours = presentDays > 0 ? (totalHours / presentDays).toFixed(1) : '0.0';
-        
-        return {
-          employee,
-          attendanceRecords,
-          summary: {
-            presentDays,
-            leaveDays,
-            totalHours: totalHours.toFixed(1),
-            avgHours,
-            attendanceRate: ((presentDays / (daysInMonth - 8)) * 100).toFixed(1) // Excluding weekends
-          }
-        };
-      });
+      }
       
-      setMonthlyAttendance(monthlyData);
-    }
+      const avgHoursDecimal = presentDays > 0 ? (totalHours / presentDays) : 0;
+      const avgHours = presentDays > 0 ? (totalHours / presentDays).toFixed(1) : '0.0';
+      
+      return {
+        employee,
+        attendanceRecords,
+        summary: {
+          presentDays,
+          leaveDays,
+          totalHours: totalHours.toFixed(1),
+          avgHours,
+          attendanceRate: ((presentDays / (daysInMonth - 8)) * 100).toFixed(1) // Excluding weekends
+        }
+      };
+    });
+    
+    setMonthlyAttendance(monthlyData);
   };
 
 
 
-  const handleMonthChange = async (month, year) => {
+  const handleMonthChange = (month, year) => {
     setSelectedMonth(month);
     setSelectedYear(year);
     // Regenerate attendance data for new month
-    await generateMonthlyAttendance(realEmployees);
+    generateMonthlyAttendance(realEmployees);
   };
 
   const getStatusBadge = (status) => {
@@ -782,11 +701,91 @@ const AdminDashboard = () => {
     }
   };
   
-  // Removed localStorage-based functions
+  // Separate function to update stats and employee status without full reload
   const updateEmployeeStats = () => {
-    // This function would normally update stats from localStorage
-    // For now, we'll just log that it's running
-    console.log('Updating employee stats...');
+    const savedEmployees = localStorage.getItem('realEmployees');
+    if (savedEmployees) {
+      try {
+        let employees = JSON.parse(savedEmployees);
+        
+        // Update employee status based on today's check-ins
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const updatedEmployees = employees.map(emp => {
+          const checkInKey = `checkIn_${emp.id}_${today}`;
+          const checkInData = localStorage.getItem(checkInKey);
+          
+          if (checkInData) {
+            try {
+              const data = JSON.parse(checkInData);
+              if (data.checkedIn) {
+                return {
+                  ...emp,
+                  status: 'active',
+                  checkIn: format(new Date(data.checkInTime), 'HH:mm'),
+                  location: data.location || 'Office', // Use location from check-in data or default to Office
+                  hours: '0:00' // Reset hours when checking in
+                };
+              } else if (data.checkOutTime) {
+                // Calculate hours worked
+                const checkInTime = new Date(data.checkInTime);
+                const checkOutTime = new Date(data.checkOutTime);
+                const diffMs = checkOutTime - checkInTime;
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                const hoursWorked = `${diffHours}:${diffMinutes.toString().padStart(2, '0')}`;
+                
+                return {
+                  ...emp,
+                  status: 'completed',
+                  checkIn: format(new Date(data.checkInTime), 'HH:mm'),
+                  location: data.location || 'Office', // Use location from check-in data or default to Office
+                  hours: hoursWorked
+                };
+              }
+            } catch (error) {
+              console.error('Error parsing check-in data for employee', emp.id, ':', error);
+            }
+          }
+          
+          // If no check-in data, keep original status but mark as not checked in today
+          return {
+            ...emp,
+            status: emp.status === 'active' ? 'absent' : emp.status, // Mark previously active employees as absent if no check-in
+            checkIn: emp.status === 'active' ? '-' : emp.checkIn
+          };
+        });
+        
+        // Update employee arrays
+        setRealEmployees(updatedEmployees);
+        setEmployeeStatus(updatedEmployees);
+        
+        // Save updated employee data back to localStorage
+        localStorage.setItem('realEmployees', JSON.stringify(updatedEmployees));
+        
+        // Calculate updated stats
+        const activeCount = updatedEmployees.filter(emp => emp.status === 'active' || emp.status === 'completed').length;
+        const leaveCount = updatedEmployees.filter(emp => emp.status === 'leave').length;
+        const absentCount = updatedEmployees.filter(emp => emp.status === 'absent').length;
+        
+        setStats(prev => ({
+          ...prev,
+          totalEmployees: updatedEmployees.length,
+          activeToday: activeCount,
+          onLeave: leaveCount,
+          absentToday: absentCount,
+          attendanceRate: ((activeCount / updatedEmployees.length) * 100).toFixed(1)
+        }));
+        
+        console.log('📊 Updated employee status:', {
+          active: activeCount,
+          leave: leaveCount,
+          absent: absentCount
+        });
+        
+      } catch (error) {
+        console.error('Error updating employee stats:', error);
+      }
+    }
   };
 
 

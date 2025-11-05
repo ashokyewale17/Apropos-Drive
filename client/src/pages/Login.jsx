@@ -73,66 +73,80 @@ const Login = () => {
       // Simulate API call - replace with actual API
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Use default employee data (removed localStorage retrieval)
-      const employees = [
-        {
-          id: 1,
-          name: 'Tushar Mhaskar',
-          email: 'tushar.mhaskar@company.com',
-          password: 'admin123',
-          department: 'Admin',
-          role: 'Admin & HR',
-          isAdmin: true
-        },
-        {
-          id: 2,
-          name: 'Vijay Solanki',
-          email: 'vijay.solanki@company.com',
-          password: 'test123',
-          department: 'Testing',
-          role: 'QA Engineer'
-        },
-        {
-          id: 3,
-          name: 'Pinky Chakrabarty',
-          email: 'pinky.chakrabarty@company.com',
-          password: 'ops123',
-          department: 'Operations',
-          role: 'Operations Manager'
-        },
-        {
-          id: 4,
-          name: 'Sanket Pawal',
-          email: 'sanket.pawal@company.com',
-          password: 'design123',
-          department: 'Design',
-          role: 'UI/UX Designer'
-        },
-        {
-          id: 5,
-          name: 'Ashok Yewale',
-          email: 'ashok.yewale@company.com',
-          password: 'soft123',
-          department: 'Software',
-          role: 'Software Developer'
-        },
-        {
-          id: 6,
-          name: 'Harshal Lohar',
-          email: 'harshal.lohar@company.com',
-          password: 'soft123',
-          department: 'Software',
-          role: 'Senior Developer'
-        },
-        {
-          id: 7,
-          name: 'Prasanna Pandit',
-          email: 'prasanna.pandit@company.com',
-          password: 'embed123',
-          department: 'Embedded',
-          role: 'Embedded Engineer'
+      // Get employee data from localStorage or use default data
+      const getEmployeeData = () => {
+        try {
+          const savedEmployees = localStorage.getItem('realEmployees');
+          if (savedEmployees) {
+            return JSON.parse(savedEmployees);
+          }
+        } catch (error) {
+          console.log('No saved employee data found, using default');
         }
-      ];
+        
+        // Default employee database - same as in AdminDashboard
+        return [
+          {
+            id: 1,
+            name: 'Tushar Mhaskar',
+            email: 'tushar.mhaskar@company.com',
+            password: 'admin123',
+            department: 'Admin',
+            role: 'Admin & HR',
+            isAdmin: true
+          },
+          {
+            id: 2,
+            name: 'Vijay Solanki',
+            email: 'vijay.solanki@company.com',
+            password: 'test123',
+            department: 'Testing',
+            role: 'QA Engineer'
+          },
+          {
+            id: 3,
+            name: 'Pinky Chakrabarty',
+            email: 'pinky.chakrabarty@company.com',
+            password: 'ops123',
+            department: 'Operations',
+            role: 'Operations Manager'
+          },
+          {
+            id: 4,
+            name: 'Sanket Pawal',
+            email: 'sanket.pawal@company.com',
+            password: 'design123',
+            department: 'Design',
+            role: 'UI/UX Designer'
+          },
+          {
+            id: 5,
+            name: 'Ashok Yewale',
+            email: 'ashok.yewale@company.com',
+            password: 'soft123',
+            department: 'Software',
+            role: 'Software Developer'
+          },
+          {
+            id: 6,
+            name: 'Harshal Lohar',
+            email: 'harshal.lohar@company.com',
+            password: 'soft123',
+            department: 'Software',
+            role: 'Senior Developer'
+          },
+          {
+            id: 7,
+            name: 'Prasanna Pandit',
+            email: 'prasanna.pandit@company.com',
+            password: 'embed123',
+            department: 'Embedded',
+            role: 'Embedded Engineer'
+          }
+        ];
+      };
+      
+      const employees = getEmployeeData();
       
       // Check against employee database (including newly added employees)
       const user = employees.find(emp => 

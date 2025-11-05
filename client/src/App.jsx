@@ -33,18 +33,31 @@ const AuthProvider = ({ children }) => {
   const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
-    // Check if user is logged in (removed localStorage check)
-    // In a real implementation, this would check with the backend
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
+    
+    if (token && userData) {
+      setUser(JSON.parse(userData));
+    }
     setLoading(false);
+    
+    // Load notifications from localStorage
+    const savedNotifications = localStorage.getItem('notifications');
+    if (savedNotifications) {
+      setNotifications(JSON.parse(savedNotifications));
+    }
   }, []);
 
   const login = (userData, token) => {
-    // Removed localStorage.setItem calls
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
   };
 
   const logout = () => {
-    // Removed localStorage.removeItem calls
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
   };
 
@@ -57,7 +70,7 @@ const AuthProvider = ({ children }) => {
     
     const updatedNotifications = [newNotification, ...notifications];
     setNotifications(updatedNotifications);
-    // Removed localStorage.setItem call
+    localStorage.setItem('notifications', JSON.stringify(updatedNotifications));
     
     // Auto-remove notification after 10 seconds
     setTimeout(() => {
@@ -68,12 +81,12 @@ const AuthProvider = ({ children }) => {
   const removeNotification = (id) => {
     const updatedNotifications = notifications.filter(n => n.id !== id);
     setNotifications(updatedNotifications);
-    // Removed localStorage.setItem call
+    localStorage.setItem('notifications', JSON.stringify(updatedNotifications));
   };
 
   const clearNotifications = () => {
     setNotifications([]);
-    // Removed localStorage.removeItem call
+    localStorage.removeItem('notifications');
   };
 
   return (
