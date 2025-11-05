@@ -24,7 +24,10 @@ const AttendanceReport = () => {
 
   useEffect(() => {
     if (realEmployees.length > 0) {
-      generateMonthlyAttendance(realEmployees);
+      const loadMonthlyAttendance = async () => {
+        await generateMonthlyAttendance(realEmployees);
+      };
+      loadMonthlyAttendance();
     }
   }, [realEmployees, selectedMonth, selectedYear]);
 
@@ -106,136 +109,277 @@ const AttendanceReport = () => {
     setRealEmployees(employees);
   };
 
-  const generateMonthlyAttendance = (employees) => {
+  const generateMonthlyAttendance = async (employees) => {
     if (!employees || employees.length === 0) return;
     
     setIsLoading(true);
     
-    const monthlyData = employees.map(employee => {
-      const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-      const attendanceRecords = [];
-      let presentDays = 0;
-      let totalHours = 0;
-      let leaveDays = 0;
-      let earlyLeaveDays = 0;
-      let halfDays = 0;
-      let workingDays = 0;
+    try {
+      // Fetch real attendance data from the API
+      const response = await fetch(`/api/attendance-records/all/${selectedMonth + 1}/${selectedYear}`);
       
-      for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(selectedYear, selectedMonth, day);
-        const isWeekendDay = date.getDay() === 0 || date.getDay() === 6;
-        
-        if (!isWeekendDay && date <= new Date()) {
-          workingDays++;
-          const isOnLeave = Math.random() < 0.05; // 5% leave rate
-          const isLate = Math.random() < 0.15; // 15% late rate
-          const isEarlyLeave = Math.random() < 0.08; // 8% early leave rate
-          const isHalfDay = Math.random() < 0.05; // 5% half day rate
-          const isPresent = !isOnLeave && Math.random() > 0.08; // 92% attendance rate
+      if (response.ok) {
+        const realMonthlyData = await response.json();
+        setMonthlyAttendance(realMonthlyData);
+        setIsLoading(false);
+      } else {
+        console.error('Failed to fetch attendance data:', response.status);
+        // Fallback to mock data if API call fails
+        const monthlyData = employees.map(employee => {
+          const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+          const attendanceRecords = [];
+          let presentDays = 0;
+          let totalHours = 0;
+          let leaveDays = 0;
+          let earlyLeaveDays = 0;
+          let halfDays = 0;
+          let workingDays = 0;
           
-          let status = 'present';
-          let inTime = '';
-          let outTime = '';
-          let hoursWorked = 0;
-          
-          if (isOnLeave) {
-            status = 'leave';
-            leaveDays++;
-          } else if (isHalfDay) {
-            status = 'half';
-            halfDays++;
-            // Half day: 4 hours work
-            const baseInHour = 9;
-            const inMinutes = Math.floor(Math.random() * 60);
-            const outHour = 13;
-            const outMinutes = Math.floor(Math.random() * 60);
+          for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(selectedYear, selectedMonth, day);
+            const isWeekendDay = date.getDay() === 0 || date.getDay() === 6;
             
-            inTime = `${baseInHour.toString().padStart(2, '0')}:${inMinutes.toString().padStart(2, '0')}`;
-            outTime = `${outHour.toString().padStart(2, '0')}:${outMinutes.toString().padStart(2, '0')}`;
-            
-            const inDate = new Date(date);
-            inDate.setHours(baseInHour, inMinutes);
-            const outDate = new Date(date);
-            outDate.setHours(outHour, outMinutes);
-            
-            hoursWorked = Math.max(0, (outDate - inDate) / (1000 * 60 * 60));
-            totalHours += hoursWorked;
-            presentDays++;
-          } else if (!isPresent) {
-            status = 'absent';
-          } else {
-            const baseInHour = isLate ? 9 + Math.floor(Math.random() * 2) : 8 + Math.floor(Math.random() * 2);
-            const inMinutes = Math.floor(Math.random() * 60);
-            
-            // Regular day or early leave
-            let outHour, outMinutes;
-            if (isEarlyLeave) {
-              status = 'early';
-              earlyLeaveDays++;
-              // Early leave: leave 2-4 hours early
-              outHour = 14 + Math.floor(Math.random() * 2);
-              outMinutes = Math.floor(Math.random() * 60);
-            } else {
-              // Regular day
-              outHour = Math.min(19, baseInHour + 8 + Math.floor(Math.random() * 2));
-              outMinutes = Math.floor(Math.random() * 60);
-            }
-            
-            inTime = `${baseInHour.toString().padStart(2, '0')}:${inMinutes.toString().padStart(2, '0')}`;
-            outTime = `${outHour.toString().padStart(2, '0')}:${outMinutes.toString().padStart(2, '0')}`;
-            
-            const inDate = new Date(date);
-            inDate.setHours(baseInHour, inMinutes);
-            const outDate = new Date(date);
-            outDate.setHours(outHour, outMinutes);
-            
-            hoursWorked = Math.max(0, (outDate - inDate) / (1000 * 60 * 60));
-            totalHours += hoursWorked;
-            presentDays++;
-            
-            if (isLate && status !== 'early') {
-              status = 'late';
+            if (!isWeekendDay && date <= new Date()) {
+              workingDays++;
+              const isOnLeave = Math.random() < 0.05; // 5% leave rate
+              const isLate = Math.random() < 0.15; // 15% late rate
+              const isEarlyLeave = Math.random() < 0.08; // 8% early leave rate
+              const isHalfDay = Math.random() < 0.05; // 5% half day rate
+              const isPresent = !isOnLeave && Math.random() > 0.08; // 92% attendance rate
+              
+              let status = 'present';
+              let inTime = '';
+              let outTime = '';
+              let hoursWorked = 0;
+              
+              if (isOnLeave) {
+                status = 'leave';
+                leaveDays++;
+              } else if (isHalfDay) {
+                status = 'half';
+                halfDays++;
+                // Half day: 4 hours work
+                const baseInHour = 9;
+                const inMinutes = Math.floor(Math.random() * 60);
+                const outHour = 13;
+                const outMinutes = Math.floor(Math.random() * 60);
+                
+                inTime = `${baseInHour.toString().padStart(2, '0')}:${inMinutes.toString().padStart(2, '0')}`;
+                outTime = `${outHour.toString().padStart(2, '0')}:${outMinutes.toString().padStart(2, '0')}`;
+                
+                const inDate = new Date(date);
+                inDate.setHours(baseInHour, inMinutes);
+                const outDate = new Date(date);
+                outDate.setHours(outHour, outMinutes);
+                
+                hoursWorked = Math.max(0, (outDate - inDate) / (1000 * 60 * 60));
+                totalHours += hoursWorked;
+                presentDays++;
+              } else if (!isPresent) {
+                status = 'absent';
+              } else {
+                const baseInHour = isLate ? 9 + Math.floor(Math.random() * 2) : 8 + Math.floor(Math.random() * 2);
+                const inMinutes = Math.floor(Math.random() * 60);
+                
+                // Regular day or early leave
+                let outHour, outMinutes;
+                if (isEarlyLeave) {
+                  status = 'early';
+                  earlyLeaveDays++;
+                  // Early leave: leave 2-4 hours early
+                  outHour = 14 + Math.floor(Math.random() * 2);
+                  outMinutes = Math.floor(Math.random() * 60);
+                } else {
+                  // Regular day
+                  outHour = Math.min(19, baseInHour + 8 + Math.floor(Math.random() * 2));
+                  outMinutes = Math.floor(Math.random() * 60);
+                }
+                
+                inTime = `${baseInHour.toString().padStart(2, '0')}:${inMinutes.toString().padStart(2, '0')}`;
+                outTime = `${outHour.toString().padStart(2, '0')}:${outMinutes.toString().padStart(2, '0')}`;
+                
+                const inDate = new Date(date);
+                inDate.setHours(baseInHour, inMinutes);
+                const outDate = new Date(date);
+                outDate.setHours(outHour, outMinutes);
+                
+                hoursWorked = Math.max(0, (outDate - inDate) / (1000 * 60 * 60));
+                totalHours += hoursWorked;
+                presentDays++;
+                
+                if (isLate && status !== 'early') {
+                  status = 'late';
+                }
+              }
+              
+              attendanceRecords.push({
+                date: day,
+                status,
+                inTime,
+                outTime,
+                hoursWorked: hoursWorked.toFixed(1)
+              });
+            } else if (isWeekendDay) {
+              attendanceRecords.push({
+                date: day,
+                status: 'weekend',
+                inTime: '',
+                outTime: '',
+                hoursWorked: '0'
+              });
             }
           }
           
-          attendanceRecords.push({
-            date: day,
-            status,
-            inTime,
-            outTime,
-            hoursWorked: hoursWorked.toFixed(1)
-          });
-        } else if (isWeekendDay) {
-          attendanceRecords.push({
-            date: day,
-            status: 'weekend',
-            inTime: '',
-            outTime: '',
-            hoursWorked: '0'
-          });
-        }
+          const avgHours = presentDays > 0 ? (totalHours / presentDays).toFixed(1) : '0.0';
+          const attendanceRate = workingDays > 0 ? ((presentDays / workingDays) * 100).toFixed(1) : '0.0';
+          
+          return {
+            employee,
+            attendanceRecords,
+            summary: {
+              presentDays,
+              leaveDays,
+              earlyLeaveDays,
+              halfDays,
+              totalHours: totalHours.toFixed(1),
+              avgHours,
+              attendanceRate
+            }
+          };
+        });
+        
+        setMonthlyAttendance(monthlyData);
+        setIsLoading(false);
       }
-      
-      const avgHours = presentDays > 0 ? (totalHours / presentDays).toFixed(1) : '0.0';
-      const attendanceRate = workingDays > 0 ? ((presentDays / workingDays) * 100).toFixed(1) : '0.0';
-      
-      return {
-        employee,
-        attendanceRecords,
-        summary: {
-          presentDays,
-          leaveDays,
-          earlyLeaveDays,
-          halfDays,
-          totalHours: totalHours.toFixed(1),
-          avgHours,
-          attendanceRate
+    } catch (error) {
+      console.error('Error fetching attendance data:', error);
+      // Fallback to mock data if API call fails
+      const monthlyData = employees.map(employee => {
+        const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+        const attendanceRecords = [];
+        let presentDays = 0;
+        let totalHours = 0;
+        let leaveDays = 0;
+        let earlyLeaveDays = 0;
+        let halfDays = 0;
+        let workingDays = 0;
+        
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(selectedYear, selectedMonth, day);
+          const isWeekendDay = date.getDay() === 0 || date.getDay() === 6;
+          
+          if (!isWeekendDay && date <= new Date()) {
+            workingDays++;
+            const isOnLeave = Math.random() < 0.05; // 5% leave rate
+            const isLate = Math.random() < 0.15; // 15% late rate
+            const isEarlyLeave = Math.random() < 0.08; // 8% early leave rate
+            const isHalfDay = Math.random() < 0.05; // 5% half day rate
+            const isPresent = !isOnLeave && Math.random() > 0.08; // 92% attendance rate
+            
+            let status = 'present';
+            let inTime = '';
+            let outTime = '';
+            let hoursWorked = 0;
+            
+            if (isOnLeave) {
+              status = 'leave';
+              leaveDays++;
+            } else if (isHalfDay) {
+              status = 'half';
+              halfDays++;
+              // Half day: 4 hours work
+              const baseInHour = 9;
+              const inMinutes = Math.floor(Math.random() * 60);
+              const outHour = 13;
+              const outMinutes = Math.floor(Math.random() * 60);
+              
+              inTime = `${baseInHour.toString().padStart(2, '0')}:${inMinutes.toString().padStart(2, '0')}`;
+              outTime = `${outHour.toString().padStart(2, '0')}:${outMinutes.toString().padStart(2, '0')}`;
+              
+              const inDate = new Date(date);
+              inDate.setHours(baseInHour, inMinutes);
+              const outDate = new Date(date);
+              outDate.setHours(outHour, outMinutes);
+              
+              hoursWorked = Math.max(0, (outDate - inDate) / (1000 * 60 * 60));
+              totalHours += hoursWorked;
+              presentDays++;
+            } else if (!isPresent) {
+              status = 'absent';
+            } else {
+              const baseInHour = isLate ? 9 + Math.floor(Math.random() * 2) : 8 + Math.floor(Math.random() * 2);
+              const inMinutes = Math.floor(Math.random() * 60);
+              
+              // Regular day or early leave
+              let outHour, outMinutes;
+              if (isEarlyLeave) {
+                status = 'early';
+                earlyLeaveDays++;
+                // Early leave: leave 2-4 hours early
+                outHour = 14 + Math.floor(Math.random() * 2);
+                outMinutes = Math.floor(Math.random() * 60);
+              } else {
+                // Regular day
+                outHour = Math.min(19, baseInHour + 8 + Math.floor(Math.random() * 2));
+                outMinutes = Math.floor(Math.random() * 60);
+              }
+              
+              inTime = `${baseInHour.toString().padStart(2, '0')}:${inMinutes.toString().padStart(2, '0')}`;
+              outTime = `${outHour.toString().padStart(2, '0')}:${outMinutes.toString().padStart(2, '0')}`;
+              
+              const inDate = new Date(date);
+              inDate.setHours(baseInHour, inMinutes);
+              const outDate = new Date(date);
+              outDate.setHours(outHour, outMinutes);
+              
+              hoursWorked = Math.max(0, (outDate - inDate) / (1000 * 60 * 60));
+              totalHours += hoursWorked;
+              presentDays++;
+              
+              if (isLate && status !== 'early') {
+                status = 'late';
+              }
+            }
+            
+            attendanceRecords.push({
+              date: day,
+              status,
+              inTime,
+              outTime,
+              hoursWorked: hoursWorked.toFixed(1)
+            });
+          } else if (isWeekendDay) {
+            attendanceRecords.push({
+              date: day,
+              status: 'weekend',
+              inTime: '',
+              outTime: '',
+              hoursWorked: '0'
+            });
+          }
         }
-      };
-    });
-    
-    setMonthlyAttendance(monthlyData);
-    setIsLoading(false);
+        
+        const avgHours = presentDays > 0 ? (totalHours / presentDays).toFixed(1) : '0.0';
+        const attendanceRate = workingDays > 0 ? ((presentDays / workingDays) * 100).toFixed(1) : '0.0';
+        
+        return {
+          employee,
+          attendanceRecords,
+          summary: {
+            presentDays,
+            leaveDays,
+            earlyLeaveDays,
+            halfDays,
+            totalHours: totalHours.toFixed(1),
+            avgHours,
+            attendanceRate
+          }
+        };
+      });
+      
+      setMonthlyAttendance(monthlyData);
+      setIsLoading(false);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -272,6 +416,13 @@ const AttendanceReport = () => {
       return `${hours + 1}h 0m`;
     }
     return `${hours}h ${minutes}m`;
+  };
+
+  const handleMonthChange = async (month, year) => {
+    setSelectedMonth(month);
+    setSelectedYear(year);
+    // Regenerate attendance data for new month
+    await generateMonthlyAttendance(realEmployees);
   };
 
   const handleExportReport = () => {
@@ -475,7 +626,7 @@ Note: You can open this CSV file in Excel for full functionality.`);
             </div>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <button 
-                onClick={() => generateMonthlyAttendance(realEmployees)}
+                onClick={async () => await generateMonthlyAttendance(realEmployees)}
                 className="btn" 
                 style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}
                 disabled={isLoading}
@@ -578,8 +729,7 @@ Note: You can open this CSV file in Excel for full functionality.`);
                   value={`${selectedYear}-${selectedMonth}`}
                   onChange={(e) => {
                     const [year, month] = e.target.value.split('-');
-                    setSelectedMonth(parseInt(month));
-                    setSelectedYear(parseInt(year));
+                    handleMonthChange(parseInt(month), parseInt(year));
                   }}
                   style={{ 
                     padding: '0.5rem', 

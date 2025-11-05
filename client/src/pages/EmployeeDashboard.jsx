@@ -106,17 +106,6 @@ const EmployeeDashboard = () => {
         };
         setTodayActivity(prev => [...prev, newActivity]);
         
-        // Save to localStorage for persistence - using user ID for employee-specific data
-        const storageKey = `checkIn_${user.id}_${format(now, 'yyyy-MM-dd')}`;
-        localStorage.setItem(storageKey, JSON.stringify({
-          checkedIn: true,
-          checkInTime: now.toISOString(),
-          activities: [...todayActivity, newActivity],
-          userId: user.id,
-          userName: user.name,
-          location: location === 'site' ? siteName : location
-        }));
-        
         console.log('Check-in successful:', data);
       } else {
         console.error('Check-in failed:', data.error);
@@ -176,18 +165,6 @@ const EmployeeDashboard = () => {
           const updatedActivity = [...todayActivity, newActivity];
           setTodayActivity(updatedActivity);
 
-          // Save to localStorage - using user ID for employee-specific data
-          const storageKey = `checkIn_${user.id}_${format(now, 'yyyy-MM-dd')}`;
-          localStorage.setItem(storageKey, JSON.stringify({
-            checkedIn: false,
-            checkInTime: checkInTime.toISOString(),
-            checkOutTime: now.toISOString(),
-            totalTime: `${hours}h ${minutes}m`,
-            activities: updatedActivity,
-            userId: user.id,
-            userName: user.name
-          }));
-          
           console.log('Check-out successful:', data);
         }
         
@@ -218,39 +195,10 @@ const EmployeeDashboard = () => {
           setCheckInTime(new Date(data.record.inTime));
         }
       } else {
-        // Fallback to localStorage if API fails
-        const today = format(new Date(), 'yyyy-MM-dd');
-        const storageKey = `checkIn_${user.id}_${today}`;
-        const savedData = localStorage.getItem(storageKey);
-        
-        if (savedData) {
-          const data = JSON.parse(savedData);
-          setIsCheckedIn(data.checkedIn);
-          if (data.checkInTime) {
-            setCheckInTime(new Date(data.checkInTime));
-          }
-          if (data.activities) {
-            setTodayActivity(data.activities);
-          }
-        }
+        console.log('No check-in data found');
       }
     } catch (error) {
       console.error('Error loading today data:', error);
-      // Fallback to localStorage
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const storageKey = `checkIn_${user.id}_${today}`;
-      const savedData = localStorage.getItem(storageKey);
-      
-      if (savedData) {
-        const data = JSON.parse(savedData);
-        setIsCheckedIn(data.checkedIn);
-        if (data.checkInTime) {
-          setCheckInTime(new Date(data.checkInTime));
-        }
-        if (data.activities) {
-          setTodayActivity(data.activities);
-        }
-      }
     }
   };
 
@@ -261,19 +209,6 @@ const EmployeeDashboard = () => {
     const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
     
     const weekData = weekDays.map(day => {
-      const dayKey = format(day, 'yyyy-MM-dd');
-      const storageKey = `checkIn_${user.id}_${dayKey}`;
-      const savedData = localStorage.getItem(storageKey);
-      
-      if (savedData) {
-        const data = JSON.parse(savedData);
-        return {
-          date: day,
-          worked: data.totalTime || '0h 0m',
-          status: data.checkedIn ? 'active' : (data.totalTime ? 'completed' : 'absent')
-        };
-      }
-      
       return {
         date: day,
         worked: '0h 0m',
@@ -286,14 +221,7 @@ const EmployeeDashboard = () => {
 
   const loadStats = () => {
     // Calculate today's hours
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const todayData = localStorage.getItem(`checkIn_${today}`);
     let todayHours = '0h 0m';
-    
-    if (todayData) {
-      const data = JSON.parse(todayData);
-      todayHours = data.totalTime || '0h 0m';
-    }
 
     // Calculate actual monthly hours based on 9-hour workdays
     const now = new Date();
@@ -313,31 +241,6 @@ const EmployeeDashboard = () => {
       const dayOfWeek = day.getDay();
       if (dayOfWeek > 0 && dayOfWeek < 6) {
         workingDays++;
-        
-        // Check if there's data for this day
-        const dayKey = format(day, 'yyyy-MM-dd');
-        const storageKey = `checkIn_${user.id}_${dayKey}`;
-        const dayData = localStorage.getItem(storageKey);
-        
-        if (dayData) {
-          const data = JSON.parse(dayData);
-          if (data.totalTime) {
-            // Parse the time string (e.g., "8h 30m")
-            const timeParts = data.totalTime.split(' ');
-            let hours = 0;
-            let minutes = 0;
-            
-            for (let i = 0; i < timeParts.length; i++) {
-              if (timeParts[i].includes('h')) {
-                hours = parseInt(timeParts[i].replace('h', '')) || 0;
-              } else if (timeParts[i].includes('m')) {
-                minutes = parseInt(timeParts[i].replace('m', '')) || 0;
-              }
-            }
-            
-            totalMinutesWorked += hours * 60 + minutes;
-          }
-        }
       }
     }
     
@@ -565,8 +468,6 @@ const EmployeeDashboard = () => {
           <div style={{ textAlign: 'center' }}>
             {/* Status Display */}
             <div style={{ marginBottom: '1.5rem' }}>
-
-              
               <h2 style={{ 
                 marginBottom: '0.5rem', 
                 fontSize: '1.25rem', 
@@ -750,12 +651,8 @@ const EmployeeDashboard = () => {
                     <StopCircle size={20} />
                     <span>Check Out</span>
                   </button>
-                  
-
                 </div>
               )}
-              
-
             </div>
           </div>
         </div>
@@ -821,8 +718,6 @@ const EmployeeDashboard = () => {
             <div style={{ fontSize: '0.625rem', opacity: 0.8 }}>Avg Monthly (9h/day)</div>
           </div>
         </div>
-
-
       </div>
 
       {/* Bottom Grid - Mobile Optimized */}
@@ -999,215 +894,10 @@ const EmployeeDashboard = () => {
           zIndex: 1000,
           backdropFilter: 'blur(4px)'
         }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            padding: '2rem',
-            maxWidth: '400px',
-            width: '90%',
-            textAlign: 'center',
-            transform: 'scale(1)',
-            animation: 'fadeIn 0.3s ease-out'
-          }}>
-            <div style={{
-              width: '60px',
-              height: '60px',
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 1.5rem',
-              border: '2px solid #3b82f6'
-            }}>
-              <MapPin size={24} color="#3b82f6" />
-            </div>
-            <h2 style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#1f2937',
-              marginBottom: '0.5rem'
-            }}>
-              Select Location
-            </h2>
-            <p style={{
-              color: '#6b7280',
-              fontSize: '1rem',
-              marginBottom: '2rem',
-              lineHeight: '1.5'
-            }}>
-              Where are you checking in from today?
-            </p>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-              marginBottom: '1.5rem'
-            }}>
-              <button
-                onClick={() => handleLocationSelect('Office')}
-                style={{
-                  padding: '1rem',
-                  borderRadius: '12px',
-                  border: '2px solid #e5e7eb',
-                  backgroundColor: 'white',
-                  color: '#1f2937',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.75rem',
-                  fontSize: '1rem'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.borderColor = '#3b82f6';
-                  e.target.style.backgroundColor = '#eff6ff';
-                  e.target.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.borderColor = '#e5e7eb';
-                  e.target.style.backgroundColor = 'white';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                <MapPin size={20} />
-                Office
-              </button>
-              <button
-                onClick={() => handleLocationSelect('Remote')}
-                style={{
-                  padding: '1rem',
-                  borderRadius: '12px',
-                  border: '2px solid #e5e7eb',
-                  backgroundColor: 'white',
-                  color: '#1f2937',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.75rem',
-                  fontSize: '1rem'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.borderColor = '#3b82f6';
-                  e.target.style.backgroundColor = '#eff6ff';
-                  e.target.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.borderColor = '#e5e7eb';
-                  e.target.style.backgroundColor = 'white';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                <MapPin size={20} />
-                Remote
-              </button>
-              <button
-                onClick={() => handleLocationSelect('site')}
-                style={{
-                  padding: '1rem',
-                  borderRadius: '12px',
-                  border: '2px solid #e5e7eb',
-                  backgroundColor: 'white',
-                  color: '#1f2937',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.75rem',
-                  fontSize: '1rem'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.borderColor = '#3b82f6';
-                  e.target.style.backgroundColor = '#eff6ff';
-                  e.target.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.borderColor = '#e5e7eb';
-                  e.target.style.backgroundColor = 'white';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                <MapPin size={20} />
-                Specific Site
-              </button>
-            </div>
-            {selectedLocation === 'site' && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <input
-                  type="text"
-                  placeholder="Enter site name"
-                  value={siteName}
-                  onChange={(e) => setSiteName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    borderRadius: '8px',
-                    border: '1px solid #d1d5db',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                />
-                <button
-                  onClick={() => handleCheckIn()}
-                  disabled={!siteName.trim()}
-                  style={{
-                    marginTop: '1rem',
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '8px',
-                    border: 'none',
-                    backgroundColor: siteName.trim() ? '#3b82f6' : '#9ca3af',
-                    color: 'white',
-                    fontWeight: '600',
-                    cursor: siteName.trim() ? 'pointer' : 'not-allowed',
-                    transition: 'all 0.2s ease',
-                    width: '100%'
-                  }}
-                >
-                  Check In at {siteName || 'Site'}
-                </button>
-              </div>
-            )}
-            <button
-              onClick={() => {
-                setShowLocationDialog(false);
-                setSelectedLocation('');
-                setSiteName('');
-              }}
-              style={{
-                padding: '0.75rem 1.5rem',
-                borderRadius: '8px',
-                border: '1px solid #d1d5db',
-                backgroundColor: 'white',
-                color: '#374151',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                width: '100%'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#f9fafb';
-                e.target.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'white';
-                e.target.style.transform = 'translateY(0)';
-              }}
-            >
-              Cancel
-            </button>
-          </div>
         </div>
       )}
-
-      {/* Custom Confirmation Dialog */}
+      
+      {/* Confirmation Dialog */}
       {showConfirmDialog && (
         <div style={{
           position: 'fixed',
@@ -1219,77 +909,29 @@ const EmployeeDashboard = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000,
-          backdropFilter: 'blur(4px)'
+          zIndex: 1000
         }}>
           <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            padding: '2rem',
-            maxWidth: '400px',
-            width: '90%',
+            background: 'white',
+            borderRadius: '0.75rem',
+            padding: '1.5rem',
+            maxWidth: '300px',
             textAlign: 'center',
-            transform: 'scale(1)',
-            animation: 'fadeIn 0.3s ease-out'
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
           }}>
-            <div style={{
-              width: '60px',
-              height: '60px',
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 1.5rem',
-              border: '2px solid #ef4444'
-            }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 9V11M12 15H12.01M5.07183 19H18.9282C20.4678 19 21.4301 17.3333 20.6603 16L13.7321 4C12.9623 2.66667 11.0378 2.66667 10.268 4L3.33978 16C2.56998 17.3333 3.53223 19 5.07183 19Z" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </div>
-            <h2 style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#1f2937',
-              marginBottom: '0.5rem'
-            }}>
-              Confirm Check Out
-            </h2>
-            <p style={{
-              color: '#6b7280',
-              fontSize: '1rem',
-              marginBottom: '2rem',
-              lineHeight: '1.5'
-            }}>
-              Are you sure you want to check out? This will end your current work session.
+            <h3 style={{ marginBottom: '1rem' }}>Confirm Check Out</h3>
+            <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>
+              Are you sure you want to check out?
             </p>
-            <div style={{
-              display: 'flex',
-              gap: '1rem',
-              justifyContent: 'center'
-            }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
               <button
                 onClick={cancelCheckOut}
                 style={{
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '8px',
-                  border: '1px solid #d1d5db',
-                  backgroundColor: 'white',
-                  color: '#374151',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  flex: 1,
-                  maxWidth: '120px'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#f9fafb';
-                  e.target.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'white';
-                  e.target.style.transform = 'translateY(0)';
+                  padding: '0.5rem 1rem',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '0.5rem',
+                  background: 'white',
+                  cursor: 'pointer'
                 }}
               >
                 Cancel
@@ -1297,27 +939,12 @@ const EmployeeDashboard = () => {
               <button
                 onClick={confirmCheckOut}
                 style={{
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '8px',
+                  padding: '0.5rem 1rem',
                   border: 'none',
-                  backgroundColor: '#ef4444',
+                  borderRadius: '0.5rem',
+                  background: 'var(--danger-color)',
                   color: 'white',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  flex: 1,
-                  maxWidth: '120px',
-                  boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.3)'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#dc2626';
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 10px 15px -3px rgba(239, 68, 68, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#ef4444';
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 4px 6px -1px rgba(239, 68, 68, 0.3)';
+                  cursor: 'pointer'
                 }}
               >
                 Check Out
