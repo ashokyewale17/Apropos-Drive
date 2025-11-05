@@ -9,7 +9,6 @@ import {
   Wifi, WifiOff, Sun, Moon, Thermometer, Droplets, CheckSquare, MapPin
 } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfMonth, endOfMonth, subDays } from 'date-fns';
-import io from 'socket.io-client';
 
 const EmployeeDashboard = () => {
   const { user } = useAuth();
@@ -36,23 +35,6 @@ const EmployeeDashboard = () => {
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState('');
   const [siteName, setSiteName] = useState('');
-
-  // Initialize socket connection
-  useEffect(() => {
-    if (user) {
-      const socket = io('http://localhost:5000');
-      window.socket = socket;
-      
-      // Join as user
-      socket.emit('join', user.id);
-      
-      // Clean up socket connection on component unmount
-      return () => {
-        socket.disconnect();
-        delete window.socket;
-      };
-    }
-  }, [user]);
 
   // Update current time every second
   useEffect(() => {
@@ -135,17 +117,6 @@ const EmployeeDashboard = () => {
           location: location === 'site' ? siteName : location
         }));
         
-        // Emit socket event for real-time update to admin dashboard
-        if (window.socket) {
-          window.socket.emit('employeeCheckIn', {
-            employeeId: user.id,
-            employeeName: user.name,
-            department: user.department || 'Unknown',
-            checkInTime: now.toISOString(),
-            location: location === 'site' ? siteName : location
-          });
-        }
-        
         console.log('Check-in successful:', data);
       } else {
         console.error('Check-in failed:', data.error);
@@ -216,17 +187,6 @@ const EmployeeDashboard = () => {
             userId: user.id,
             userName: user.name
           }));
-          
-          // Emit socket event for real-time update to admin dashboard
-          if (window.socket) {
-            window.socket.emit('employeeCheckOut', {
-              employeeId: user.id,
-              employeeName: user.name,
-              department: user.department || 'Unknown',
-              checkOutTime: now.toISOString(),
-              hoursWorked: `${hours}h ${minutes}m`
-            });
-          }
           
           console.log('Check-out successful:', data);
         }

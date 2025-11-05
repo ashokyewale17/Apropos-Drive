@@ -8,63 +8,7 @@ import {
   MapPin, Phone, Mail, Star, Briefcase, UserPlus, GitBranch, PieChart, TrendingDown, Edit3
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, subDays, isToday, isThisWeek } from 'date-fns';
-import io from 'socket.io-client';
 
-// Add pulse animation styles
-const pulseStyle = `
-  @keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.3; }
-    100% { opacity: 1; }
-  }
-  :root {
-    --info-color: #3b82f6;
-  }
-`;
-
-// Inject styles
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style');
-  styleSheet.textContent = pulseStyle;
-  document.head.appendChild(styleSheet);
-}
-
-const AdminDashboard = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    totalEmployees: 7,
-    activeToday: 6,
-    avgHoursPerDay: '8.2',
-    pendingLeaves: 2,
-    onLeave: 1,
-    absentToday: 0,
-    monthlyHours: 1200,
-    productivity: 92.5,
-    newHires: 2,
-    efficiency: 88.7,
-    attendanceRate: 95.8
-  });
-
-  const [timeFilter, setTimeFilter] = useState('today');
-  const [departmentFilter, setDepartmentFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [employeeStatus, setEmployeeStatus] = useState([]);
-</original_code>```
-
-```
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../App';
-import { 
-  Users, Clock, FileText, TrendingUp, AlertCircle, CheckCircle, Calendar, Timer,
-  BarChart3, DollarSign, Target, Award, Activity, Settings, RefreshCw, Download,
-  Filter, Search, Plus, ArrowUpRight, ArrowDownRight, Eye, Edit, Trash2,
-  MapPin, Phone, Mail, Star, Briefcase, UserPlus, GitBranch, PieChart, TrendingDown, Edit3
-} from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, subDays, isToday, isThisWeek } from 'date-fns';
-import io from 'socket.io-client';
 
 // Add pulse animation styles
 const pulseStyle = `

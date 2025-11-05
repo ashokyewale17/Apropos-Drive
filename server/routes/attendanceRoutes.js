@@ -192,8 +192,8 @@ router.post("/checkin", async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.emit('employeeCheckIn', {
-        employeeId: employee._id.toString(),
-        employeeName: attendanceRecord.employeeId?.name || employee.name || 'Unknown',
+        employeeId: employeeId,
+        employeeName: attendanceRecord.employeeId?.name || 'Unknown',
         department: attendanceRecord.employeeId?.department || 'Unknown',
         checkInTime: attendanceRecord.inTime,
         location: location || 'Office'
@@ -289,8 +289,8 @@ router.post("/checkout", async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.emit('employeeCheckOut', {
-        employeeId: employee._id.toString(),
-        employeeName: attendanceRecord.employeeId?.name || employee.name || 'Unknown',
+        employeeId: employeeId,
+        employeeName: attendanceRecord.employeeId?.name || 'Unknown',
         department: attendanceRecord.employeeId?.department || 'Unknown',
         checkOutTime: attendanceRecord.outTime,
         hoursWorked: hoursWorked

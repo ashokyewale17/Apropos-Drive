@@ -12,7 +12,6 @@ import AttendanceEditRequests from './pages/AttendanceEditRequests';
 import Header from './components/Header';
 import LoadingSpinner from './components/LoadingSpinner';
 import { Bell, X } from 'lucide-react';
-import io from 'socket.io-client';
 import './App.css';
 
 // Auth Context
@@ -49,32 +48,6 @@ const AuthProvider = ({ children }) => {
       setNotifications(JSON.parse(savedNotifications));
     }
   }, []);
-
-  useEffect(() => {
-    // Initialize socket connection when user is authenticated
-    if (user) {
-      const socket = io('http://localhost:5000');
-      window.socket = socket; // Make socket globally available
-      
-      // Join as user
-      socket.emit('join', user.id);
-      
-      // Listen for notifications
-      socket.on('notification', (data) => {
-        addNotification({
-          title: data.title,
-          message: data.message,
-          type: data.type || 'info'
-        });
-      });
-      
-      // Clean up socket connection on component unmount or user logout
-      return () => {
-        socket.disconnect();
-        delete window.socket;
-      };
-    }
-  }, [user]);
 
   const login = (userData, token) => {
     localStorage.setItem('token', token);
