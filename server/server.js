@@ -45,6 +45,20 @@ const startServer = async () => {
         console.log(`Employee ${employeeId} joined with socket ${socket.id}`);
       });
       
+      // Handle employee check-in event
+      socket.on('employeeCheckIn', (data) => {
+        console.log('Employee check-in event received:', data);
+        // Broadcast to all connected clients (especially admins)
+        socket.broadcast.emit('employeeCheckIn', data);
+      });
+      
+      // Handle employee check-out event
+      socket.on('employeeCheckOut', (data) => {
+        console.log('Employee check-out event received:', data);
+        // Broadcast to all connected clients (especially admins)
+        socket.broadcast.emit('employeeCheckOut', data);
+      });
+      
       // Handle disconnection
       socket.on('disconnect', () => {
         const employeeId = activeConnections.get(socket.id);
