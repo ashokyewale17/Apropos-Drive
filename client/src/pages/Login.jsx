@@ -70,36 +70,104 @@ const Login = () => {
     setError('');
 
     try {
-      // Call the actual API for authentication - ONLY real data, no mock fallback
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Use the actual user data from the server
+      // Simulate API call - replace with actual API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Get employee data from localStorage or use default data
+      const getEmployeeData = () => {
+        try {
+          const savedEmployees = localStorage.getItem('realEmployees');
+          if (savedEmployees) {
+            return JSON.parse(savedEmployees);
+          }
+        } catch (error) {
+          console.log('No saved employee data found, using default');
+        }
+        
+        // Default employee database - same as in AdminDashboard
+        return [
+          {
+            id: 1,
+            name: 'Tushar Mhaskar',
+            email: 'tushar.mhaskar@company.com',
+            password: 'admin123',
+            department: 'Admin',
+            role: 'Admin & HR',
+            isAdmin: true
+          },
+          {
+            id: 2,
+            name: 'Vijay Solanki',
+            email: 'vijay.solanki@company.com',
+            password: 'test123',
+            department: 'Testing',
+            role: 'QA Engineer'
+          },
+          {
+            id: 3,
+            name: 'Pinky Chakrabarty',
+            email: 'pinky.chakrabarty@company.com',
+            password: 'ops123',
+            department: 'Operations',
+            role: 'Operations Manager'
+          },
+          {
+            id: 4,
+            name: 'Sanket Pawal',
+            email: 'sanket.pawal@company.com',
+            password: 'design123',
+            department: 'Design',
+            role: 'UI/UX Designer'
+          },
+          {
+            id: 5,
+            name: 'Ashok Yewale',
+            email: 'ashok.yewale@company.com',
+            password: 'soft123',
+            department: 'Software',
+            role: 'Software Developer'
+          },
+          {
+            id: 6,
+            name: 'Harshal Lohar',
+            email: 'harshal.lohar@company.com',
+            password: 'soft123',
+            department: 'Software',
+            role: 'Senior Developer'
+          },
+          {
+            id: 7,
+            name: 'Prasanna Pandit',
+            email: 'prasanna.pandit@company.com',
+            password: 'embed123',
+            department: 'Embedded',
+            role: 'Embedded Engineer'
+          }
+        ];
+      };
+      
+      const employees = getEmployeeData();
+      
+      // Check against employee database (including newly added employees)
+      const user = employees.find(emp => 
+        emp.email.toLowerCase() === formData.email.toLowerCase() && 
+        emp.password === formData.password
+      );
+      
+      if (user) {
         const userData = {
-          id: data.user._id, // Use the actual MongoDB _id
-          name: data.user.name,
-          email: data.user.email,
-          role: data.user.role,
-          position: data.user.position,
-          department: data.user.department
+          id: user.id.toString(),
+          name: user.name,
+          email: user.email,
+          role: user.isAdmin ? 'admin' : 'employee',
+          position: user.role,
+          department: user.department
         };
-        login(userData, data.token);
+        login(userData, `mock-token-${user.id}`);
       } else {
-        setError(data.message || 'Invalid email or password');
+        setError('Invalid email or password');
       }
     } catch (err) {
-      console.error('Login error:', err);
       setError('Login failed. Please try again.');
     } finally {
       setLoading(false);
@@ -109,14 +177,13 @@ const Login = () => {
   const fillDemoCredentials = (type) => {
     if (type === 'admin') {
       setFormData({
-        email: 'admin@company.com',
+        email: 'tushar.mhaskar@company.com',
         password: 'admin123'
       });
     } else {
-      // No demo credentials for employees - they must be created by admin
       setFormData({
-        email: '',
-        password: ''
+        email: 'vijay.solanki@company.com',
+        password: 'test123'
       });
     }
   };
@@ -256,113 +323,126 @@ const Login = () => {
         <form onSubmit={handleSubmit} style={{ position: 'relative', zIndex: 1 }}>
           {error && (
             <div style={{
-              background: '#fee2e2',
-              border: '1px solid #fecaca',
-              color: '#ef4444',
-              padding: '0.75rem 1rem',
-              borderRadius: '0.5rem',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              color: '#dc2626',
+              padding: '1rem',
+              borderRadius: '12px',
               marginBottom: '1.5rem',
               fontSize: '0.875rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
+              fontWeight: '500',
+              textAlign: 'center',
+              backdropFilter: 'blur(10px)'
             }}>
-              <AlertCircle size={16} />
               {error}
             </div>
           )}
-          
+
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{
               display: 'block',
               marginBottom: '0.5rem',
-              fontWeight: '500',
               color: '#374151',
-              fontSize: '0.875rem'
-            }}>
-              Email Address
-            </label>
-            <div style={{
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              <Mail size={18} style={{
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              letterSpacing: '0.025em'
+            }}>Email Address</label>
+            <div style={{ position: 'relative' }}>
+              <div style={{
                 position: 'absolute',
                 left: '1rem',
-                color: '#9ca3af'
-              }} />
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#9ca3af',
+                zIndex: 1
+              }}>
+                <Mail size={18} />
+              </div>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="you@company.com"
+                placeholder="Enter your email"
+                required
                 style={{
                   width: '100%',
-                  padding: '0.75rem 0.75rem 0.75rem 3rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0.5rem',
-                  fontSize: '1rem',
-                  transition: 'all 0.2s',
-                  background: 'white',
-                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                  padding: '1rem 1rem 1rem 3rem',
+                  borderRadius: '12px',
+                  border: '2px solid rgba(229, 231, 235, 0.8)',
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  backdropFilter: 'blur(10px)',
+                  fontSize: '0.975rem',
+                  color: '#111827',
+                  fontWeight: '500',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  outline: 'none',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#667eea';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1), 0 4px 12px -2px rgba(102, 126, 234, 0.2)';
+                  e.target.style.background = 'rgba(255, 255, 255, 0.95)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = '#d1d5db';
-                  e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                  e.target.style.borderColor = 'rgba(229, 231, 235, 0.8)';
+                  e.target.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
+                  e.target.style.background = 'rgba(255, 255, 255, 0.8)';
                 }}
               />
             </div>
           </div>
-          
-          <div style={{ marginBottom: '1.5rem' }}>
+
+          <div style={{ marginBottom: '2rem' }}>
             <label style={{
               display: 'block',
               marginBottom: '0.5rem',
-              fontWeight: '500',
               color: '#374151',
-              fontSize: '0.875rem'
-            }}>
-              Password
-            </label>
-            <div style={{
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              <Lock size={18} style={{
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              letterSpacing: '0.025em'
+            }}>Password</label>
+            <div style={{ position: 'relative' }}>
+              <div style={{
                 position: 'absolute',
                 left: '1rem',
-                color: '#9ca3af'
-              }} />
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#9ca3af',
+                zIndex: 1
+              }}>
+                <Lock size={18} />
+              </div>
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="••••••••"
+                placeholder="Enter your password"
+                required
                 style={{
                   width: '100%',
-                  padding: '0.75rem 3rem 0.75rem 3rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0.5rem',
-                  fontSize: '1rem',
-                  transition: 'all 0.2s',
-                  background: 'white',
-                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                  padding: '1rem 3rem 1rem 3rem',
+                  borderRadius: '12px',
+                  border: '2px solid rgba(229, 231, 235, 0.8)',
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  backdropFilter: 'blur(10px)',
+                  fontSize: '0.975rem',
+                  color: '#111827',
+                  fontWeight: '500',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  outline: 'none',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#667eea';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1), 0 4px 12px -2px rgba(102, 126, 234, 0.2)';
+                  e.target.style.background = 'rgba(255, 255, 255, 0.95)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = '#d1d5db';
-                  e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                  e.target.style.borderColor = 'rgba(229, 231, 235, 0.8)';
+                  e.target.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
+                  e.target.style.background = 'rgba(255, 255, 255, 0.8)';
                 }}
               />
               <button
@@ -371,47 +451,73 @@ const Login = () => {
                 style={{
                   position: 'absolute',
                   right: '1rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
                   color: '#9ca3af',
-                  padding: '0.25rem'
+                  padding: '0.25rem',
+                  borderRadius: '6px',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.color = '#667eea';
+                  e.target.style.background = 'rgba(102, 126, 234, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.color = '#9ca3af';
+                  e.target.style.background = 'none';
                 }}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
-          
+
           <button
             type="submit"
             disabled={loading}
             style={{
               width: '100%',
-              background: loading ? 'linear-gradient(135deg, #93c5fd 0%, #a5b4fc 100%)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
+              padding: '1rem 2rem',
+              borderRadius: '12px',
               border: 'none',
-              borderRadius: '0.5rem',
-              padding: '0.75rem 1.5rem',
+              background: loading 
+                ? 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)'
+                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
               fontSize: '1rem',
-              fontWeight: '600',
+              fontWeight: '700',
+              letterSpacing: '0.05em',
+              textTransform: 'uppercase',
               cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: loading 
+                ? '0 4px 12px -2px rgba(107, 114, 128, 0.3)'
+                : '0 8px 25px -8px rgba(102, 126, 234, 0.5)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.5rem',
-              boxShadow: '0 4px 6px -1px rgba(102, 126, 234, 0.3), 0 2px 4px -1px rgba(102, 126, 234, 0.1)'
+              marginBottom: '2rem',
+              position: 'relative',
+              overflow: 'hidden'
             }}
             onMouseEnter={(e) => {
               if (!loading) {
                 e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 10px 15px -3px rgba(102, 126, 234, 0.4), 0 4px 6px -2px rgba(102, 126, 234, 0.2)';
+                e.target.style.boxShadow = '0 12px 35px -8px rgba(102, 126, 234, 0.6)';
               }
             }}
             onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = '0 4px 6px -1px rgba(102, 126, 234, 0.3), 0 2px 4px -1px rgba(102, 126, 234, 0.1)';
+              if (!loading) {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 8px 25px -8px rgba(102, 126, 234, 0.5)';
+              }
             }}
           >
             {loading ? (
@@ -419,59 +525,23 @@ const Login = () => {
                 <div style={{
                   width: '20px',
                   height: '20px',
-                  border: '2px solid #ffffff',
-                  borderBottomColor: 'transparent',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTop: '2px solid white',
                   borderRadius: '50%',
                   animation: 'spin 1s linear infinite'
-                }}></div>
+                }} />
                 Signing in...
               </>
             ) : (
               <>
-                Sign in
+                <Sparkles size={18} />
+                Sign In
                 <ArrowRight size={18} />
               </>
             )}
           </button>
-          
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '1rem',
-            marginTop: '1.5rem',
-            fontSize: '0.875rem'
-          }}>
-            <button
-              type="button"
-              onClick={() => fillDemoCredentials('admin')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#667eea',
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                fontSize: '0.875rem'
-              }}
-            >
-              Admin Demo
-            </button>
-            <span style={{ color: '#9ca3af' }}>|</span>
-            <button
-              type="button"
-              onClick={() => fillDemoCredentials('employee')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#667eea',
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                fontSize: '0.875rem'
-              }}
-            >
-              Employee Login
-            </button>
-          </div>
         </form>
+
       </div>
     </div>
   );

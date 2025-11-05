@@ -188,19 +188,16 @@ router.post("/checkin", async (req, res) => {
       console.warn('Could not populate employee details:', populateError.message);
     }
     
-    // Emit socket event for real-time update with proper employee data
+    // Emit socket event for real-time update
     const io = req.app.get('io');
     if (io) {
-      const eventData = {
-        employeeId: employee._id.toString(), // Use the actual database ID
-        employeeName: employee.name, // Use the actual employee name
-        department: employee.department || 'Unknown',
+      io.emit('employeeCheckIn', {
+        employeeId: employeeId,
+        employeeName: attendanceRecord.employeeId?.name || 'Unknown',
+        department: attendanceRecord.employeeId?.department || 'Unknown',
         checkInTime: attendanceRecord.inTime,
         location: location || 'Office'
-      };
-      
-      console.log('Emitting employeeCheckIn event:', eventData);
-      io.emit('employeeCheckIn', eventData);
+      });
     }
     
     res.status(201).json({
@@ -288,19 +285,16 @@ router.post("/checkout", async (req, res) => {
       console.warn('Could not populate employee details:', populateError.message);
     }
     
-    // Emit socket event for real-time update with proper employee data
+    // Emit socket event for real-time update
     const io = req.app.get('io');
     if (io) {
-      const eventData = {
-        employeeId: employee._id.toString(), // Use the actual database ID
-        employeeName: employee.name, // Use the actual employee name
-        department: employee.department || 'Unknown',
+      io.emit('employeeCheckOut', {
+        employeeId: employeeId,
+        employeeName: attendanceRecord.employeeId?.name || 'Unknown',
+        department: attendanceRecord.employeeId?.department || 'Unknown',
         checkOutTime: attendanceRecord.outTime,
         hoursWorked: hoursWorked
-      };
-      
-      console.log('Emitting employeeCheckOut event:', eventData);
-      io.emit('employeeCheckOut', eventData);
+      });
     }
     
     res.json({
