@@ -59,6 +59,17 @@ const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    
+    // Call logout API endpoint
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    }).catch(err => {
+      // Ignore errors during logout
+      console.log('Logout API call failed:', err);
+    });
   };
 
   const addNotification = (notification) => {
