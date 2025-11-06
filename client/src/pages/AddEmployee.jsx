@@ -46,15 +46,9 @@ const AddEmployee = () => {
     }
 
     try {
-      // Get token from localStorage
-      const token = localStorage.getItem('token');
-      
       const response = await fetch("/api/employees", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,

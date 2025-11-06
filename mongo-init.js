@@ -26,7 +26,7 @@ db.employees.insertOne({
   salary: 100000,
   phone: "+1234567890",
   address: "123 Admin Street, City, State",
-  dateOfJoining: new Date(),
+  joinDate: new Date(),
   isActive: true,
   createdAt: new Date(),
   updatedAt: new Date()

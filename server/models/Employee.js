@@ -3,12 +3,6 @@ const validator = require('validator');
 const bcrypt = require('bcryptjs');
 
 const employeeSchema = new mongoose.Schema({
-  employeeId: {
-    type: String,
-    unique: true,
-    sparse: true, // Allows null values to be non-unique
-    trim: true
-  },
   name: {
     type: String,
     required: [true, 'Name is required'],
@@ -105,6 +99,5 @@ employeeSchema.methods.comparePassword = async function(candidatePassword) {
 employeeSchema.index({ name: 1, email: 1 });
 employeeSchema.index({ department: 1 });
 employeeSchema.index({ role: 1 });
-employeeSchema.index({ employeeId: 1 });
 
 module.exports = mongoose.model('Employee', employeeSchema);

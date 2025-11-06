@@ -7,72 +7,61 @@ const connectDB = async () => {
     console.log('MONGODB_URI:', process.env.MONGODB_URI);
     console.log('NODE_ENV:', process.env.NODE_ENV);
     
-    // Use the MONGODB_URI from environment variables first
-    // This should be set in docker-compose.yml or .env file
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/employee_management';
+    // Multiple connection string options
+    const connectionStrings = [
+      process.env.MONGODB_URI,
+      'mongodb://127.0.0.1:27017/employee_management',
+      'mongodb://localhost:27017/employee_management'
+    ].filter(Boolean);
     
-    console.log(`Attempting to connect to: ${mongoUri}`);
+    console.log('Connection strings to try:', connectionStrings);
 
-    const conn = await mongoose.connect(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 10000, // Increased timeout for Docker environments
-      socketTimeoutMS: 45000,
-      maxPoolSize: 10,
-      bufferCommands: true,
-      // Add authentication options
-      authSource: 'admin'
-    });
+    let connected = false;
+    let lastError;
 
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-    
-    // Log connection details
-    console.log('Database Name:', conn.connection.name);
-    console.log('Database Host:', conn.connection.host);
-    console.log('Database Port:', conn.connection.port);
-    
-    // Test the connection with a simple query
-    const testConnection = async () => {
+    for (const uri of connectionStrings) {
       try {
-        await mongoose.connection.db.admin().ping();
-        console.log('✅ Database ping successful');
+        console.log(`Attempting to connect to: ${uri}`);
+        const conn = await mongoose.connect(uri, {
+          useNewUrlParser: true,
+          useUnifiedTopology: true,
+          serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+          socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+          maxPoolSize: 10, // Maintain up to 10 socket connections
+          // Removed bufferMaxEntries as it's not supported in newer MongoDB versions
+          bufferCommands: true, // Enable mongoose buffering to queue operations until connection is ready
+        });
+
+        console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+        connected = true;
+        break;
       } catch (err) {
-        console.log('❌ Database ping failed:', err.message);
+        lastError = err;
+        console.log(`❌ Failed to connect to: ${uri}`);
+        console.log('Error details:', err.message);
+        continue;
       }
-    };
-    
-    testConnection();
-    
-    // Listen for connection events
-    mongoose.connection.on('error', (err) => {
-      console.error('❌ MongoDB connection error:', err);
-    });
-    
-    mongoose.connection.on('disconnected', () => {
-      console.log('⚠️ MongoDB disconnected');
-    });
-    
-    mongoose.connection.on('reconnected', () => {
-      console.log('✅ MongoDB reconnected');
-    });
+    }
+
+    if (!connected) {
+      throw lastError;
+    }
     
     return mongoose.connection;
   } catch (error) {
     console.error('❌ Database connection error:', error.message);
-    console.error('Error stack:', error.stack);
+    console.log('\n📋 Troubleshooting Steps:');
+    console.log('1. Check if MongoDB service is running:');
+    console.log('   - Open Services (services.msc) and look for MongoDB service');
+    console.log('   - Or run: net start MongoDB');
+    console.log('2. Start MongoDB manually:');
+    console.log('   - Open Command Prompt as Administrator');
+    console.log('   - Run: mongod --dbpath "C:\\data\\db"');
+    console.log('3. Use MongoDB Atlas (cloud):');
+    console.log('   - Visit: https://www.mongodb.com/cloud/atlas');
+    console.log('   - Update MONGODB_URI in .env file\n');
     
-    // Additional Docker-specific troubleshooting
-    console.log('\n📋 Docker Troubleshooting Steps:');
-    console.log('1. Check if MongoDB container is running:');
-    console.log('   docker-compose ps');
-    console.log('2. Check MongoDB container logs:');
-    console.log('   docker-compose logs mongodb');
-    console.log('3. Verify network connectivity between containers:');
-    console.log('   docker-compose exec app ping mongodb');
-    console.log('4. Check if MongoDB is listening on the correct port:');
-    console.log('   docker-compose exec mongodb netstat -tlnp');
-    
-    throw error;
+    throw error; // Re-throw the error so the server can handle it properly
   }
 };
 

@@ -95,92 +95,37 @@ router.get('/:id', authenticateToken, requireAdminOrSelf, async (req, res) => {
 // @access  Private (Admin)
 router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    // Log the incoming request for debugging
-    console.log('Received employee creation request:', JSON.stringify(req.body, null, 2));
-    
-    // Check if database connection is active
-    if (mongoose.connection.readyState !== 1) {
-      console.log('❌ Database not connected');
-      return res.status(500).json({ message: 'Database not connected' });
-    }
-    
-    // Extract all possible fields from request body
-    const { name, email, password, role, position, department, salary, phone, address, employeeId, hireDate } = req.body;
-    
-    // Validate required fields
-    if (!name || !email || !position || !department || !salary || !phone || !address) {
-      console.log('❌ Missing required fields');
-      return res.status(400).json({ message: 'Missing required fields' });
-    }
+    const { name, email, password, role, position, department, salary, phone, address } = req.body;
     
     // Check if employee with email already exists
     const existingEmployee = await Employee.findOne({ email, isActive: true });
     if (existingEmployee) {
-      console.log('Employee with email already exists:', email);
       return res.status(400).json({ message: 'Employee with this email already exists' });
     }
     
-    // Map client fields to model fields
-    const employeeData = {
-      employeeId, // Now properly mapped to the model field
+    const employee = new Employee({
       name,
       email,
       password: password || 'password123', // Default password
       role: role || 'employee',
       position,
       department,
-      salary: salary || 0,
+      salary,
       phone,
-      address,
-      // Map hireDate to dateOfJoining
-      dateOfJoining: hireDate ? new Date(hireDate) : new Date()
-    };
-    
-    console.log('Creating employee with data:', JSON.stringify(employeeData, null, 2));
-    
-    const employee = new Employee(employeeData);
-    
-    // Log validation errors if any
-    const validationError = employee.validateSync();
-    if (validationError) {
-      console.log('Validation error:', validationError.message);
-      console.log('Validation errors details:', JSON.stringify(validationError.errors, null, 2));
-      return res.status(400).json({ 
-        message: 'Validation error', 
-        errors: Object.values(validationError.errors).map(err => err.message)
-      });
-    }
+      address
+    });
     
     await employee.save();
-    console.log('Employee created successfully with ID:', employee._id);
     
     // Remove password from response
     const employeeResponse = await Employee.findById(employee._id);
     res.status(201).json(employeeResponse);
   } catch (error) {
-    console.error('❌ Error creating employee:', error);
-    console.error('Error stack:', error.stack);
-    
+    console.error('Error creating employee:', error);
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({ message: 'Validation error', errors });
     }
-    
-    if (error.code === 11000) {
-      // Duplicate key error
-      const field = Object.keys(error.keyPattern)[0];
-      return res.status(400).json({ 
-        message: `An employee with this ${field} already exists` 
-      });
-    }
-    
-    // Handle database connection errors
-    if (error.name === 'MongoNetworkError' || error.name === 'MongooseServerSelectionError') {
-      return res.status(500).json({ 
-        message: 'Database connection error. Please check if MongoDB is running.' 
-      });
-    }
-    
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
