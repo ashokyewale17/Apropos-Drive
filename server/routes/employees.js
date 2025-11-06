@@ -95,7 +95,8 @@ router.get('/:id', authenticateToken, requireAdminOrSelf, async (req, res) => {
 // @access  Private (Admin)
 router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { name, email, password, role, position, department, salary, phone, address } = req.body;
+    // Extract all possible fields from request body
+    const { name, email, password, role, position, department, salary, phone, address, employeeId, hireDate } = req.body;
     
     // Check if employee with email already exists
     const existingEmployee = await Employee.findOne({ email, isActive: true });
@@ -103,17 +104,23 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Employee with this email already exists' });
     }
     
-    const employee = new Employee({
+    // Map client fields to model fields
+    const employeeData = {
+      employeeId, // Now properly mapped to the model field
       name,
       email,
       password: password || 'password123', // Default password
       role: role || 'employee',
       position,
       department,
-      salary,
+      salary: salary || 0,
       phone,
-      address
-    });
+      address,
+      // Map hireDate to dateOfJoining
+      dateOfJoining: hireDate ? new Date(hireDate) : new Date()
+    };
+    
+    const employee = new Employee(employeeData);
     
     await employee.save();
     
